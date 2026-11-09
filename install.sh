@@ -10,6 +10,7 @@ PORT_FILE="$CONFIG_DIR/port"
 NGINX_SITE="/etc/nginx/sites-available/pipdfbox"
 NGINX_ENABLED="/etc/nginx/sites-enabled/pipdfbox"
 PHP_FPM_SERVICE="php8.4-fpm"
+GITHUB_ARCHIVE="https://codeload.github.com/pennynet/PiPDFBox/tar.gz/refs/heads/main"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -24,6 +25,42 @@ require_root() {
         error "Bitte so starten: sudo /opt/pipdfbox/install.sh"
         exit 1
     fi
+}
+
+
+download_app_from_github() {
+    local temp_dir archive extracted
+    command -v curl >/dev/null || { error "curl fehlt. Bitte installieren: sudo apt install curl"; return 1; }
+    command -v tar >/dev/null || { error "tar fehlt."; return 1; }
+
+    temp_dir="$(mktemp -d /tmp/pipdfbox-github.XXXXXX)"
+    archive="$temp_dir/source.tar.gz"
+
+    info "Lade PiPDFBox von GitHub herunter ..."
+    if ! curl -fL --retry 2 --connect-timeout 15 "$GITHUB_ARCHIVE" -o "$archive"; then
+        rm -rf "$temp_dir"
+        error "GitHub-Download fehlgeschlagen."
+        return 1
+    fi
+
+    if ! tar -xzf "$archive" -C "$temp_dir"; then
+        rm -rf "$temp_dir"
+        error "GitHub-Archiv konnte nicht entpackt werden."
+        return 1
+    fi
+
+    extracted="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d -name 'PiPDFBox-*' -print -quit)"
+    if [[ -z "$extracted" || ! -f "$extracted/public/index.php" || ! -f "$extracted/worker.py" ]]; then
+        rm -rf "$temp_dir"
+        error "Das GitHub-Archiv enthält nicht die erwarteten PiPDFBox-Dateien."
+        return 1
+    fi
+
+    # Bestehendes Verzeichnis nicht löschen: nur den Anwendungscode aktualisieren.
+    # install.sh bleibt erhalten, ebenso .git und lokale Zusatzdateien.
+    cp -a "$extracted/." "$APP_DIR/"
+    rm -rf "$temp_dir"
+    info "Anwendungscode wurde aus GitHub aktualisiert."
 }
 
 check_app() {
@@ -140,6 +177,7 @@ apply_nginx_config() {
 }
 
 install_app() {
+    download_app_from_github || return 1
     check_app || return 1
     command -v php >/dev/null || { error "PHP CLI fehlt."; return 1; }
     command -v nginx >/dev/null || { error "Nginx fehlt."; return 1; }
@@ -256,6 +294,7 @@ main() {
         echo "================================"
         echo "             PiPDFBox"
         echo "================================"
+        echo "Quelle: GitHub (pennynet/PiPDFBox, main)"
         echo "1) Neuinstallation / Einrichtung"
         echo "2) Port ändern"
         echo "3) Installation prüfen"
