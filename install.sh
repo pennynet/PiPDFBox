@@ -63,6 +63,64 @@ download_app_from_github() {
     info "Anwendungscode wurde aus GitHub aktualisiert."
 }
 
+
+# Laufzeit-Abhängigkeiten der PiPDFBox und der Installationsroutine.
+REQUIRED_PACKAGES=(
+    ca-certificates
+    curl
+    tar
+    nginx
+    php8.4-cli
+    php8.4-fpm
+    ghostscript
+    qpdf
+    poppler-utils
+    python3
+    python3-pypdf
+    python3-pil
+    iproute2
+)
+
+check_dependencies() {
+    local missing=() package
+    echo
+    info "Prüfe benötigte Pakete ..."
+    for package in "${REQUIRED_PACKAGES[@]}"; do
+        if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed"; then
+            echo "[OK] $package"
+        else
+            echo "[FEHLT] $package"
+            missing+=("$package")
+        fi
+    done
+
+    if (( ${#missing[@]} > 0 )); then
+        echo
+        info "Installiere fehlende Pakete automatisch ..."
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}"
+    else
+        info "Alle benötigten Pakete sind bereits installiert."
+    fi
+
+    # Nach der Installation nochmals kontrollieren.
+    for package in "${REQUIRED_PACKAGES[@]}"; do
+        dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed" || {
+            error "Abhängigkeit fehlt weiterhin: $package"
+            return 1
+        }
+    done
+
+    command -v php >/dev/null || { error "PHP CLI ist nicht verfügbar."; return 1; }
+    php -m | grep -qi '^session$' || { error "PHP-Erweiterung session fehlt."; return 1; }
+    php -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
+    python3 -c 'import PIL; import pypdf' 2>/dev/null || {
+        error "Python-Module Pillow oder pypdf fehlen."
+        return 1
+    }
+    info "Abhängigkeitsprüfung erfolgreich."
+}
+
 check_app() {
     [[ -f "$PUBLIC_DIR/index.php" && -f "$APP_DIR/worker.py" ]] || {
         error "PiPDFBox-Dateien fehlen unter $APP_DIR."
@@ -177,10 +235,9 @@ apply_nginx_config() {
 }
 
 install_app() {
+    check_dependencies || return 1
     download_app_from_github || return 1
     check_app || return 1
-    command -v php >/dev/null || { error "PHP CLI fehlt."; return 1; }
-    command -v nginx >/dev/null || { error "Nginx fehlt."; return 1; }
     systemctl is-active --quiet "$PHP_FPM_SERVICE" || {
         error "$PHP_FPM_SERVICE ist nicht aktiv."
         return 1
@@ -272,6 +329,7 @@ check_installation() {
     echo
     info "PiPDFBox – Installationsprüfung"
     local failed=0 file
+    check_dependencies || failed=1
     for file in "$PUBLIC_DIR/index.php" "$APP_DIR/worker.py" "$CONFIG_FILE" "$NGINX_SITE" "$PORT_FILE"; do
         if [[ -f "$file" ]]; then
             echo "[OK] $file"
@@ -287,8 +345,61 @@ check_installation() {
     return "$failed"
 }
 
+
+install_launcher() {
+    install -d -m 755 /usr/local/bin
+    ln -sfn "$APP_DIR/install.sh" /usr/local/bin/pipdfbox
+}
+
+update_app() {
+    echo
+    info "PiPDFBox – Anwendung aktualisieren"
+    check_dependencies || return 1
+    download_app_from_github || return 1
+    check_app || return 1
+    install_launcher
+    info "Anwendungscode aktualisiert. Einstellungen und PDF-Aufträge bleiben erhalten."
+}
+
+uninstall_app() {
+    local choice answer
+    echo
+    info "PiPDFBox – Deinstallation"
+    echo "1) Nur Anwendung entfernen (Einstellungen und PDF-Aufträge behalten)"
+    echo "2) Alles entfernen (einschließlich Einstellungen und PDF-Aufträge)"
+    echo "0) Abbrechen"
+    read -r -p "Auswahl: " choice
+    case "$choice" in
+        1)
+            read -r -p "Anwendung wirklich entfernen? (ja/NEIN): " answer
+            [[ "$answer" == "ja" ]] || { info "Abgebrochen."; return 0; }
+            ;;
+        2)
+            read -r -p "Alle Einstellungen und PDF-Aufträge unwiderruflich löschen? (ALLES): " answer
+            [[ "$answer" == "ALLES" ]] || { info "Abgebrochen."; return 0; }
+            ;;
+        0) info "Abgebrochen."; return 0 ;;
+        *) error "Ungültige Auswahl."; return 1 ;;
+    esac
+
+    rm -f "$NGINX_ENABLED" "$NGINX_SITE"
+    if command -v nginx >/dev/null 2>&1; then
+        nginx -t || { error "Nginx-Test fehlgeschlagen. Abbruch."; return 1; }
+        systemctl reload nginx
+    fi
+    rm -f /usr/local/bin/pipdfbox
+    rm -rf "$APP_DIR"
+    if [[ "$choice" == "2" ]]; then
+        rm -rf "$CONFIG_DIR" "$DATA_DIR"
+        info "PiPDFBox einschließlich Konfiguration und PDF-Aufträgen entfernt."
+    else
+        info "Anwendung entfernt. Konfiguration und PDF-Aufträge bleiben erhalten."
+    fi
+}
+
 main() {
     require_root
+    install_launcher
     while true; do
         echo
         echo "================================"
@@ -298,6 +409,8 @@ main() {
         echo "1) Neuinstallation / Einrichtung"
         echo "2) Port ändern"
         echo "3) Installation prüfen"
+        echo "4) Anwendung aktualisieren"
+        echo "5) PiPDFBox deinstallieren"
         echo "0) Beenden"
         echo
         local choice
@@ -306,6 +419,8 @@ main() {
             1) install_app ;;
             2) change_port ;;
             3) check_installation ;;
+            4) update_app ;;
+            5) uninstall_app ;;
             0) exit 0 ;;
             *) error "Ungültige Auswahl." ;;
         esac
