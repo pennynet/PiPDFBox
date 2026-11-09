@@ -2,6 +2,13 @@
 set -Eeuo pipefail
 
 APP_DIR="/opt/pipdfbox"
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_PATH")" && pwd)"
+VERSION_FILE="$SCRIPT_DIR/VERSION"
+VERSION="unbekannt"
+if [[ -f "$VERSION_FILE" ]]; then
+    VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+fi
 PUBLIC_DIR="$APP_DIR/public"
 CONFIG_DIR="/etc/pipdfbox"
 CONFIG_FILE="$CONFIG_DIR/config.php"
@@ -10,6 +17,7 @@ PORT_FILE="$CONFIG_DIR/port"
 NGINX_SITE="/etc/nginx/sites-available/pipdfbox"
 NGINX_ENABLED="/etc/nginx/sites-enabled/pipdfbox"
 PHP_FPM_SERVICE="php8.4-fpm"
+PHP_INI_FILE="/etc/php/8.4/fpm/conf.d/99-pipdfbox.ini"
 GITHUB_ARCHIVE="https://codeload.github.com/pennynet/PiPDFBox/tar.gz/refs/heads/main"
 
 GREEN='\033[0;32m'
@@ -59,6 +67,9 @@ download_app_from_github() {
     # Bestehendes Verzeichnis nicht löschen: nur den Anwendungscode aktualisieren.
     # install.sh bleibt erhalten, ebenso .git und lokale Zusatzdateien.
     cp -a "$extracted/." "$APP_DIR/"
+    if [[ -f "$extracted/VERSION" ]]; then
+        VERSION="$(tr -d '[:space:]' < "$extracted/VERSION")"
+    fi
     rm -rf "$temp_dir"
     info "Anwendungscode wurde aus GitHub aktualisiert."
 }
@@ -276,6 +287,14 @@ install_app() {
     install -d -o www-data -g www-data -m 700 "$DATA_DIR" "$DATA_DIR/jobs"
     install -d -o root -g www-data -m 750 "$CONFIG_DIR"
 
+    cat > "$PHP_INI_FILE" <<'PHPINI'
+upload_max_filesize = 400M
+post_max_size = 900M
+max_execution_time = 900
+max_input_time = 240
+memory_limit = 256M
+PHPINI
+
     config_tmp="$(mktemp "${CONFIG_FILE}.tmp.XXXXXX")"
     cat > "$config_tmp" <<EOF
 <?php
@@ -338,6 +357,7 @@ check_installation() {
             failed=1
         fi
     done
+    echo "Installierte Version: $(cat "$APP_DIR/VERSION" 2>/dev/null || echo unbekannt)"
     [[ ! -f "$PORT_FILE" ]] || echo "Port: $(cat "$PORT_FILE")"
     if systemctl is-active --quiet nginx; then echo "[OK] nginx aktiv"; else echo "[FEHLT] nginx nicht aktiv"; failed=1; fi
     if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then echo "[OK] $PHP_FPM_SERVICE aktiv"; else echo "[FEHLT] $PHP_FPM_SERVICE nicht aktiv"; failed=1; fi
@@ -403,7 +423,7 @@ main() {
     while true; do
         echo
         echo "================================"
-        echo "             PiPDFBox"
+        echo "             PiPDFBox Version $VERSION"
         echo "================================"
         echo "Quelle: GitHub (pennynet/PiPDFBox, main)"
         echo "1) Neuinstallation / Einrichtung"
