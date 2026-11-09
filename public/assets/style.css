@@ -1,0 +1,177 @@
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1e293b;background:#f3f6fa;font-synthesis:none}*{box-sizing:border-box}body{margin:0}header{height:82px;background:#fff;border-bottom:1px solid #e5eaf0;display:flex;align-items:center;justify-content:space-between;padding:0 max(22px,calc((100% - 900px)/2))}.brand{display:flex;align-items:center;gap:12px}.brand h1{font-size:20px;margin:0;font-weight:750}.brand p{font-size:12px;color:#718096;margin:2px 0 0}.logo{width:43px;height:43px;background:#2459a6;color:#fff;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:14px}.logout{color:#52647b;text-decoration:none;font-size:14px}.wrap{max-width:760px;margin:42px auto;padding:0 20px}.intro h2{font-size:27px;margin:0 0 8px}.intro p{color:#66758a;line-height:1.55;margin:0 0 24px}.panel,.login{background:#fff;border:1px solid #e4eaf1;border-radius:16px;padding:26px;box-shadow:0 8px 28px #1e293b0a}.drop{border:2px dashed #b9c8da;border-radius:13px;min-height:190px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;cursor:pointer;color:#334155;text-align:center;padding:20px}.drop.hover{background:#f0f6ff;border-color:#3975c7}.drop strong{font-size:17px}.drop span:not(.uploadicon){font-size:14px;color:#718096}.drop small,.muted{color:#8793a3;font-size:12px}.uploadicon{width:38px;height:38px;border-radius:50%;background:#eaf2fd;color:#2459a6;display:grid;place-items:center;font-size:25px}.drop input{position:absolute;width:1px;height:1px;opacity:0}label:not(.drop){display:block;font-weight:650;font-size:14px;margin:23px 0 9px}select,input[type=password]{width:100%;padding:13px;border:1px solid #ccd6e2;border-radius:9px;background:#fff;font:inherit;color:#26364a}.filelist{white-space:pre-line;color:#607086;font-size:13px;margin:12px 0 4px;max-height:100px;overflow:auto}.primary{display:inline-flex;justify-content:center;align-items:center;background:#2459a6;color:white;border:0;border-radius:9px;padding:13px 20px;font:inherit;font-weight:650;text-decoration:none;cursor:pointer}.primary:hover{background:#194987}.primary:disabled{opacity:.65;cursor:wait}.submit{width:100%;margin-top:22px}.center{text-align:center}.alert,.success{padding:13px 16px;border-radius:9px;margin:0 0 16px;font-size:14px}.alert{background:#fff0ef;color:#a83228}.success{background:#edf8f0;color:#23683a}.result{background:#fff;border:1px solid #cfe4d4;border-radius:12px;padding:16px 18px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:15px}.result p{margin:4px 0 0;color:#68778a;font-size:13px}.download{white-space:nowrap}footer{text-align:center;color:#95a1b0;font-size:12px;margin:25px 0}.login{max-width:390px;margin:12vh auto}.login form{display:grid;gap:12px}.login label{margin:12px 0 0} .login .primary{width:100%}.login .muted{text-align:center;margin-top:20px}@media(max-width:540px){.wrap{margin:25px auto}.panel{padding:17px}.intro h2{font-size:23px}.result{align-items:flex-start;flex-direction:column}.download{width:100%}header{padding:0 17px}}
+.option-check{display:flex;align-items:flex-start;gap:10px;font-weight:500!important;line-height:1.45;margin:18px 0 4px!important}.option-check input{margin-top:3px;flex:0 0 auto}
+
+/* PiPDFBox – Funktionskacheln */
+.tools-heading {
+    font-size: 19px;
+    margin: 30px 0 16px;
+}
+
+.tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    border: 1px solid #e4eaf1;
+    border-top: 4px solid var(--tool-color);
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 5px 18px #1e293b0a;
+}
+
+.tool-merge { --tool-color: #3478d4; }
+.tool-split { --tool-color: #239b69; }
+.tool-interleave { --tool-color: #e28a32; }
+.tool-compress { --tool-color: #8156c7; }
+.tool-number { --tool-color: #d65391; grid-column: 1 / -1; }
+
+.tool-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--tool-color) 12%, white);
+    color: var(--tool-color);
+    font-size: 25px;
+    font-weight: 700;
+}
+
+.tool-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: stretch;
+}
+
+.tool-content h3 {
+    margin: 0 0 7px;
+    font-size: 17px;
+}
+
+.tool-content p {
+    margin: 0 0 15px;
+    color: #718096;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.task-button {
+    width: 100%;
+    margin-top: auto;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--tool-color);
+    color: white;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.task-button:hover {
+    filter: brightness(.92);
+}
+
+.task-button:disabled {
+    opacity: .65;
+    cursor: wait;
+}
+
+.option-label {
+    display: block;
+    margin: 0 0 7px;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.tool-content select,
+.tool-content input[type="text"] {
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 11px;
+    border: 1px solid #ccd6e2;
+    border-radius: 8px;
+    background: #fff;
+    font: inherit;
+}
+
+.tool-content .option-check {
+    margin: 0 0 14px !important;
+    font-size: 12px;
+}
+
+.processing-hint {
+    margin-top: 22px;
+}
+
+@media(max-width: 600px) {
+    .tool-grid {
+        grid-template-columns: 1fr;
+    }
+    .tool-number {
+        grid-column: auto;
+    }
+}
+
+/* Kompaktere Funktionskacheln */
+.tool-grid {
+    gap: 12px;
+}
+
+.tool-card {
+    padding: 14px;
+    gap: 9px;
+    border-radius: 12px;
+}
+
+.tool-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 21px;
+    border-radius: 10px;
+}
+
+.tool-content h3 {
+    font-size: 15px;
+    margin-bottom: 5px;
+}
+
+.tool-content p {
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 10px;
+}
+
+.task-button {
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.tool-content select,
+.tool-content input[type="text"] {
+    padding: 9px;
+    margin-bottom: 9px;
+    font-size: 13px;
+}
+
+.option-label {
+    font-size: 12px;
+    margin-bottom: 5px;
+}
+
+.tool-content .option-check {
+    margin-bottom: 9px !important;
+}
+
+.tools-heading {
+    margin-top: 24px;
+    font-size: 18px;
+}
+

@@ -1,0 +1,6 @@
+*.bak
+*.vor-*
+__pycache__/
+*.pyc
+*.pdf
+.env
