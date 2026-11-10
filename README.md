@@ -75,3 +75,26 @@ GitHub: https://github.com/pennynet/PiPDFBox
 ## Version
 
 0.1 – Erste Entwicklungs- und Testversion.
+
+
+## Lokaler Web-Smoke-Test (Entwicklung)
+
+Für einen isolierten Ende-zu-Ende-Test der Weboberfläche:
+
+Voraussetzungen:
+- PHP CLI mit `fileinfo`, `session` und `proc_open`
+- Python 3 mit `pypdf`
+- `curl`
+
+Aufruf aus dem Repository-Verzeichnis:
+
+    bash tests/web-smoke.sh
+
+Der Test:
+- erstellt eine temporäre Kopie der Webanwendung,
+- verwendet ausschließlich künstlich erzeugte PDF-Dateien,
+- startet den PHP-Entwicklungsserver ausschließlich auf `127.0.0.1`,
+- testet Anmeldung, CSRF-geschützte Uploads, Zusammenführen, Aufteilen, Interleave und Download-Berechtigung,
+- beendet den Testserver und entfernt das temporäre Testverzeichnis automatisch.
+
+Der Test führt weder `install.sh` aus noch verändert er Nginx, PHP-FPM, Systempakete oder produktive Verzeichnisse. Er ersetzt keine Tests auf Debian/Raspberry Pi OS mit PHP-FPM. Komprimierung und Nummerierung sind in dieser ersten Testversion ausdrücklich nicht enthalten.
