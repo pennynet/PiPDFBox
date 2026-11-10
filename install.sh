@@ -83,6 +83,7 @@ REQUIRED_PACKAGES=(
     nginx
     php8.4-cli
     php8.4-fpm
+    php8.4-mbstring
     ghostscript
     qpdf
     poppler-utils
@@ -125,6 +126,7 @@ check_dependencies() {
     command -v php >/dev/null || { error "PHP CLI ist nicht verfügbar."; return 1; }
     php -m | grep -qi '^session$' || { error "PHP-Erweiterung session fehlt."; return 1; }
     php -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
+    php -m | grep -qi '^mbstring$' || { error "PHP-Erweiterung mbstring fehlt."; return 1; }
     python3 -c 'import PIL; import pypdf' 2>/dev/null || {
         error "Python-Module Pillow oder pypdf fehlen."
         return 1
