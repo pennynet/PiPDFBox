@@ -324,9 +324,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
 
                         $workerOutput = '';
-                        $rc = runWorker($args, $workerOutput);
+                        $rc = 1;
 
-                        if ($rc === 0) {
+                        // Globaler Worker-Lock: Auch parallele HTTP-Anfragen
+                        // dürfen niemals mehrere PDF-Worker gleichzeitig starten.
+                        $lockHandle = @fopen(rtrim($dataDir, '/') . '/worker.lock', 'c');
+                        if ($lockHandle === false) {
+                            $error = 'Worker-Sperre konnte nicht geöffnet werden.';
+                        } else {
+                            if (!flock($lockHandle, LOCK_EX)) {
+                                $error = 'Worker-Sperre konnte nicht gesetzt werden.';
+                            } else {
+                                try {
+                                    // Eine weitere Anfrage wartet hier, bis der
+                                    // laufende PDF-Auftrag beendet ist.
+                                    $rc = runWorker($args, $workerOutput);
+                                } finally {
+                                    flock($lockHandle, LOCK_UN);
+                                }
+                            }
+                            fclose($lockHandle);
+                        }
+
+                        if (!$error && $rc === 0) {
 
                             $out = trim($workerOutput);
                             $base = basename($out);
@@ -347,7 +367,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
                             }
 
-                        } else {
+                        } elseif (!$error) {
                             $error = 'PDF-Verarbeitung fehlgeschlagen: ' .
                                 ($workerOutput ?: 'Unbekannter Fehler');
                         }
