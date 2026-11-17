@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } else {
 
         $op = (string)$_POST['action'];
-        $allowed = ['merge', 'split', 'interleave', 'compress', 'number'];
+        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr', 'ocr_pdfa'];
 
         if (!in_array($op, $allowed, true)) {
             $error = 'Unbekannte Aktion.';
@@ -275,6 +275,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$error && $op === 'number' && count($valid) !== 1) {
                     $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
                 }
+                if (!$error && in_array($op, ['pdfa', 'ocr', 'ocr_pdfa'], true) && count($valid) !== 1) {
+                    $error = 'Für diese Funktion bitte genau eine PDF auswählen.';
+                }
 
                 if (!$error) {
 
@@ -325,6 +328,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
                         }
 
+                        if (in_array($op, ['pdfa', 'ocr_pdfa'], true)) {
+                            $version = (string)($_POST[$op === 'pdfa' ? 'pdfa_version' : 'ocr_pdfa_version'] ?? 'pdfa-2');
+                            if (!in_array($version, ['pdfa-1', 'pdfa-2', 'pdfa-3'], true)) {
+                                $version = 'pdfa-2';
+                            }
+                            $args[] = '--output-type=' . $version;
+                        }
+                        if (in_array($op, ['ocr', 'ocr_pdfa'], true)) {
+                            $language = (string)($_POST[$op === 'ocr' ? 'ocr_language' : 'ocr_pdfa_language'] ?? 'deu');
+                            if (!in_array($language, ['deu', 'eng', 'deu+eng'], true)) {
+                                $language = 'deu';
+                            }
+                            $args[] = '--language=' . $language;
+                        }
                         foreach ($paths as $p) {
                             $args[] = $p;
                         }
@@ -563,6 +580,55 @@ $result = $_SESSION['result'] ?? null;
                 </div>
             </section>
 
+            <section class="tool-card tool-pdfa">
+                <div class="tool-icon">▤</div>
+                <div class="tool-content">
+                    <h3>PDF/A erstellen</h3>
+                    <p>PDF für die Langzeitarchivierung umwandeln.</p>
+                    <label class="option-label" for="pdfa_version">PDF/A-Version</label>
+                    <select id="pdfa_version" name="pdfa_version">
+                        <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
+                        <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
+                        <option value="pdfa-3">PDF/A-3b – mit eingebetteten Dateien</option>
+                    </select>
+                    <button class="task-button" type="submit" name="action" value="pdfa">PDF/A erstellen</button>
+                </div>
+            </section>
+            <section class="tool-card tool-ocr">
+                <div class="tool-icon">⌕</div>
+                <div class="tool-content">
+                    <h3>OCR</h3>
+                    <p>Scan-PDFs durchsuchbar machen.</p>
+                    <label class="option-label" for="ocr_language">Erkennungssprache</label>
+                    <select id="ocr_language" name="ocr_language">
+                        <option value="deu" selected>Deutsch</option>
+                        <option value="eng">Englisch</option>
+                        <option value="deu+eng">Deutsch + Englisch</option>
+                    </select>
+                    <button class="task-button" type="submit" name="action" value="ocr">OCR starten</button>
+                </div>
+            </section>
+            <section class="tool-card tool-ocr-pdfa">
+                <div class="tool-icon">⌕▤</div>
+                <div class="tool-content">
+                    <h3>OCR + PDF/A</h3>
+                    <p>Scan durchsuchbar und archivgerecht speichern.</p>
+                    <label class="option-label" for="ocr_pdfa_language">Erkennungssprache</label>
+                    <select id="ocr_pdfa_language" name="ocr_pdfa_language">
+                        <option value="deu" selected>Deutsch</option>
+                        <option value="eng">Englisch</option>
+                        <option value="deu+eng">Deutsch + Englisch</option>
+                    </select>
+                    <label class="option-label" for="ocr_pdfa_version">PDF/A-Version</label>
+                    <select id="ocr_pdfa_version" name="ocr_pdfa_version">
+                        <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
+                        <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
+                        <option value="pdfa-3">PDF/A-3b – mit eingebetteten Dateien</option>
+                    </select>
+                    <button class="task-button" type="submit" name="action" value="ocr_pdfa">OCR + PDF/A starten</button>
+                </div>
+            </section>
+
         </div>
 
         <p class="muted center processing-hint">
@@ -577,7 +643,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=6"></script>
+<script src="/assets/app.js?v=7"></script>
 
 </body>
 </html>
