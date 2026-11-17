@@ -382,7 +382,6 @@ check_installation() {
 
 
 install_cleanup_timer() {
-    install -m 755 "$APP_DIR/cleanup.py" /opt/pipdfbox/cleanup.py
     cat > /etc/systemd/system/pipdfbox-cleanup.service <<'EOF'
 [Unit]
 Description=PiPDFBox – alte PDF-Aufträge bereinigen
