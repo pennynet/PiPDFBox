@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $profile = 'stark';
                             }
                             $args[] = '--profile=' . $profile;
-                            if (!empty($config['parallel_gs'])) {
+                            if (($_POST['parallel_gs'] ?? '') === '1') {
                                 $args[] = '--parallel-gs';
                             }
                         }
@@ -531,6 +531,16 @@ $result = $_SESSION['result'] ?? null;
                         <option value="stark" selected>Stark – gute Balance</option>
                         <option value="mittel">Mittel – bessere Bildqualität</option>
                     </select>
+                    <label class="option-check" for="parallel_gs">
+                        <input
+                            type="checkbox"
+                            id="parallel_gs"
+                            name="parallel_gs"
+                            value="1"
+                            <?= !empty($config['parallel_gs']) ? 'checked' : '' ?>
+                        >
+                        Parallelverarbeitung mit Ghostscript verwenden
+                    </label>
                     <button class="task-button" type="submit" name="action" value="compress">
                         PDF komprimieren
                     </button>
