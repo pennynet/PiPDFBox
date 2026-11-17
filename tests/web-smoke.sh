@@ -182,7 +182,7 @@ extract_login_csrf() {
 import re
 import sys
 html = open(sys.argv[1], encoding="utf-8").read()
-match = re.search(r'name="login_csrf"\\s+value="([a-f0-9]{64})"', html)
+match = re.search(r'name="login_csrf"\s+value="([a-f0-9]{64})"', html)
 if not match:
     raise SystemExit("Login-CSRF-Token fehlt")
 print(match.group(1))
