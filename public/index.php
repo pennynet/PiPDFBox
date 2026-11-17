@@ -311,6 +311,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $profile = 'stark';
                             }
                             $args[] = '--profile=' . $profile;
+                            if (!empty($config['parallel_gs'])) {
+                                $args[] = '--parallel-gs';
+                            }
                         }
 
                         if ($op === 'number') {
