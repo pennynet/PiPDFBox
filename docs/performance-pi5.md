@@ -19,14 +19,25 @@ PHP-FPM and PHP execution timeouts.
 PiPDFBox uses pypdf for merge, split, interleave and page numbering. Those code paths
 are not automatically parallel just because the Pi has four CPU cores.
 
-Compression currently invokes qpdf and then Ghostscript's `pdfwrite` device to
-create alternative candidates. Ghostscript's rendering-thread option does not imply
-that the PDF-writing/compression path will scale across four cores. A thread flag
-should only be added after measurements demonstrate a benefit for this exact device
-and workload. The next optimization candidate is to benchmark running the colour
-and grayscale Ghostscript candidate conversions concurrently; that uses two
-processes for one user job, not two simultaneous user jobs, and must be checked for
-peak memory use first.
+Compression invokes qpdf and then Ghostscript's `pdfwrite` device to create
+alternative candidates. Ghostscript's rendering-thread option does not imply that
+the PDF-writing/compression path will scale across four cores. PiPDFBox therefore
+does not force four Ghostscript threads. Instead, the optional `parallel_gs` mode
+runs the colour and grayscale candidate conversions concurrently (two processes
+for one user job).
+
+On a Raspberry Pi 5 with 8 GB RAM, a 282-page PDF (230 MB input) was measured three
+times in each mode. Median compression time was 773.764 s with parallel Ghostscript
+and 794.071 s in serial mode (about 2.6% faster). Both modes produced the same
+36,334,011-byte, 282-page output. A separate `/usr/bin/time -v` run measured
+52,464 KB maximum resident set size for the parallel run and 52,928 KB for serial.
+These are process-level measurements, not a complete aggregate of every child
+process, so monitor system memory when testing other workloads.
+
+For fresh installations, the Pi 5 configuration now defaults to
+`'parallel_gs' => true`. Set it to `false` in `/etc/pipdfbox/config.php` to
+return to serial candidate generation. Existing installations keep their current
+setting; changing the installer default does not overwrite an existing config.
 
 ## Benchmark procedure on the Pi 5
 
