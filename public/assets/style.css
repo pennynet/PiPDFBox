@@ -10,7 +10,7 @@
 .tool-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
+    grid-auto-rows: auto;
     gap: 14px;
 }
 
@@ -240,4 +240,13 @@
     padding: 0 11px;
     line-height: normal;
     font-size: 13px;
+}
+
+
+/* Obere Reihe kompakter halten; untere Reihe mit Formularfeldern bleibt unverändert. */
+.tool-grid > .tool-merge,
+.tool-grid > .tool-split,
+.tool-grid > .tool-interleave,
+.tool-grid > .tool-qes {
+    min-height: 260px;
 }
