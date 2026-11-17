@@ -303,7 +303,7 @@ PHPINI
 return [
     'password_hash' => '$hash',
     'data_dir' => '$DATA_DIR',
-    'parallel_gs' => false,
+    'parallel_gs' => true,
 ];
 EOF
     chown root:www-data "$config_tmp"
