@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """PiPDFBox PDF worker. Arguments are passed as an argv list, never through a shell."""
 import os, sys, zipfile, subprocess, shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
@@ -63,11 +64,12 @@ def main():
     if len(sys.argv) < 4: raise ValueError('Ungültige Worker-Parameter')
     op, outdir, *raw_inputs = sys.argv[1:]
     reverse_second = '--reverse-second' in raw_inputs
+    parallel_gs = '--parallel-gs' in raw_inputs
     profile_args = [p for p in raw_inputs if p.startswith('--profile=')]
     profile = profile_args[0].split('=', 1)[1] if profile_args else 'stark'
     inputs = [
         p for p in raw_inputs
-        if p != '--reverse-second' and not p.startswith('--profile=') and not p.startswith('--prefix=')
+        if p != '--reverse-second' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=')
     ]
     outdir = Path(outdir).resolve()
     for p in inputs:
@@ -218,8 +220,17 @@ def main():
                 if not destination.is_file() or destination.stat().st_size == 0:
                     raise RuntimeError('Ghostscript hat keine gültige Ausgabedatei erzeugt')
 
-            make_candidate(color_file, color_dpi, False)
-            make_candidate(gray_file, gray_dpi, True)
+            if parallel_gs:
+                # Experimenteller Pi-5-Modus: zwei unabhängige Ghostscript-Läufe
+                # parallel. Wegen des höheren RAM-Spitzenbedarfs nur explizit aktivieren.
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    color_task = pool.submit(make_candidate, color_file, color_dpi, False)
+                    gray_task = pool.submit(make_candidate, gray_file, gray_dpi, True)
+                    color_task.result()
+                    gray_task.result()
+            else:
+                make_candidate(color_file, color_dpi, False)
+                make_candidate(gray_file, gray_dpi, True)
 
             # Graustufen nur berücksichtigen, wenn mindestens 20 % kleiner
             # als die Farbversion.
