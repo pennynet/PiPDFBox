@@ -413,6 +413,16 @@ uninstall_app() {
     fi
     rm -f /usr/local/bin/pipdfbox
     rm -rf "$APP_DIR"
+
+    # PiPDFBox-spezifische PHP-FPM-Einstellungen gehören zur Anwendung
+    # und werden bei jeder Deinstallation entfernt.
+    if [[ -f "$PHP_INI_FILE" ]]; then
+        rm -f "$PHP_INI_FILE"
+        if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then
+            systemctl restart "$PHP_FPM_SERVICE"
+        fi
+    fi
+
     if [[ "$choice" == "2" ]]; then
         rm -rf "$CONFIG_DIR" "$DATA_DIR"
         info "PiPDFBox einschließlich Konfiguration und PDF-Aufträgen entfernt."
