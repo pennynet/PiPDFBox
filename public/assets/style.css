@@ -180,7 +180,13 @@
 
 /* Einheitliches Raster für alle acht Funktionskacheln. */
 .tool-card { min-height: 300px; }
-.tool-content select { min-height: 42px; }
+.tool-content select,
+.tool-content input[type="text"] {
+    box-sizing: border-box;
+    height: 42px;
+    min-height: 42px;
+    line-height: 1.2;
+}
 
 .planned-card .tool-content { justify-content: flex-start; }
 .planned-tag {
