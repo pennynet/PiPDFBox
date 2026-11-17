@@ -227,7 +227,8 @@
 
 /* Komprimierungsoption oberhalb des Auswahlfelds; Eingabefeld exakt wie Selects ausrichten. */
 .tool-compress .option-check {
-    margin: 0 0 9px !important;
+    /* Checkbox bleibt sichtbar über dem Pulldown, gibt aber weniger vertikalen Abstand frei. */
+    margin: 0 0 -10px !important;
 }
 .tool-content select,
 .tool-content input[type="text"] {
