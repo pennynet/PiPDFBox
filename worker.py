@@ -170,8 +170,8 @@ def main():
             raise RuntimeError('OCRmyPDF ist nicht installiert. Bitte install.sh ausführen.')
         command = [ocrmypdf, '--jobs', '1']
         if op == 'pdfa':
-            # PDF/A-Konvertierung ohne OCR: vorhandene Inhalte unverändert übernehmen.
-            command.extend(['--tesseract-timeout', '0', '--output-type', output_type])
+            # Textseiten überspringen, damit vorhandene Textebenen nicht als OCR-Konflikt abbrechen.
+            command.extend(['--skip-text', '--tesseract-timeout', '0', '--output-type', output_type])
         else:
             command.extend([
                 '--skip-text', '--language', language,
