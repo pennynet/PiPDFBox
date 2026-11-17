@@ -597,7 +597,7 @@ $result = $_SESSION['result'] ?? null;
                     <select id="pdfa_version" name="pdfa_version">
                         <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
                         <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
-                        <option value="pdfa-3">PDF/A-3b – mit eingebetteten Dateien</option>
+                        <option value="pdfa-3">PDF/A-3b – für eingebettete Dateien</option>
                     </select>
                     <button class="task-button" type="submit" name="action" value="pdfa">PDF/A erstellen</button>
                 </div>
