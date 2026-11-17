@@ -291,6 +291,7 @@ install_app() {
 
     cat > "$PHP_INI_FILE" <<'PHPINI'
 upload_max_filesize = 400M
+max_file_uploads = 110
 post_max_size = 900M
 max_execution_time = 900
 max_input_time = 240

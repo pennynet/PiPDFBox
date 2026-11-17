@@ -198,8 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 $count = count($files['name']);
 
-                if ($count > 10) {
-                    $error = 'Maximal 10 Dateien pro Auftrag.';
+                if ($count > 100) {
+                    $error = 'Maximal 100 Dateien pro Auftrag.';
                 }
 
                 $totalBytes = 0;
@@ -463,7 +463,7 @@ $result = $_SESSION['result'] ?? null;
             <span class="uploadicon">↑</span>
             <strong>PDF-Dateien hier ablegen</strong>
             <span>oder klicken, um Dateien auszuwählen</span>
-            <small>PDF · maximal 400 MB je Datei, 800 MB je Auftrag</small>
+            <small>PDF · maximal 100 Dateien, 400 MB je Datei, 800 MB je Auftrag</small>
 
             <input
                 id="pdfs"
