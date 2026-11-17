@@ -286,6 +286,32 @@ if len(PdfReader(sys.argv[1], strict=True).pages) != 3:
 print("OK: Interleave-Ergebnis ist eine gültige PDF mit 3 Seiten")
 PY
 
+csrf="$(extract_csrf "$TMP_DIR/interleave.html")"
+run_upload_and_download number "$TMP_DIR/number.html" \
+    -F "number_prefix=Smoke-Test" \
+    -F "pdfs[]=@$TMP_DIR/data/synthetic_A.pdf;type=application/pdf"
+
+python3 - "$TMP_DIR/number.result" <<'PY'
+from pypdf import PdfReader
+import sys
+if len(PdfReader(sys.argv[1], strict=True).pages) != 2:
+    raise SystemExit("Nummerierung hat die Seitenzahl verändert.")
+print("OK: Nummerierung erzeugt eine gültige PDF mit 2 Seiten")
+PY
+
+csrf="$(extract_csrf "$TMP_DIR/number.html")"
+run_upload_and_download compress "$TMP_DIR/compress.html" \
+    -F "compress_profile=stark" \
+    -F "pdfs[]=@$TMP_DIR/data/synthetic_A.pdf;type=application/pdf"
+
+python3 - "$TMP_DIR/compress.result" <<'PY'
+from pypdf import PdfReader
+import sys
+if len(PdfReader(sys.argv[1], strict=True).pages) != 2:
+    raise SystemExit("Komprimierung hat die Seitenzahl verändert.")
+print("OK: Komprimierung erzeugt eine gültige PDF mit 2 Seiten")
+PY
+
 echo "PiPDFBox Web-Smoke-Test erfolgreich abgeschlossen."
-echo "Geprüft: Anmeldung, CSRF-Verarbeitung, Merge, Split, Interleave, Download-Schutz."
-echo "Nicht Bestandteil dieses Smoke-Tests: PHP-FPM, Nginx, Komprimierung und Nummerierung."
+echo "Geprüft: Login-CSRF, Verarbeitungs-CSRF, Merge, Split, Interleave, Nummerierung, Komprimierung und Download-Schutz."
+echo "Nicht Bestandteil dieses Smoke-Tests: PHP-FPM, Nginx und Installer."
