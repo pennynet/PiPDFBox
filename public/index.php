@@ -46,17 +46,26 @@ function runWorker(array $args, string &$output): int {
         $args
     );
 
+    // stderr in eine Datei schreiben, damit umfangreiche OCR-Fortschrittsmeldungen
+    // die Worker-Pipe nicht füllen und den Prozess blockieren.
+    $stderrFile = tempnam(sys_get_temp_dir(), 'pipdfbox-worker-');
+    if ($stderrFile === false) {
+        $output = 'Temporäre Worker-Datei konnte nicht angelegt werden.';
+        return 1;
+    }
+
     $p = proc_open(
         $cmd,
         [
             0 => ['pipe', 'r'],
             1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
+            2 => ['file', $stderrFile, 'w']
         ],
         $pipes
     );
 
     if (!is_resource($p)) {
+        @unlink($stderrFile);
         $output = 'Worker konnte nicht gestartet werden.';
         return 1;
     }
@@ -66,10 +75,9 @@ function runWorker(array $args, string &$output): int {
     $stdout = stream_get_contents($pipes[1]);
     fclose($pipes[1]);
 
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[2]);
-
     $code = proc_close($p);
+    $stderr = is_file($stderrFile) ? (string)file_get_contents($stderrFile) : '';
+    @unlink($stderrFile);
 
     if ($code === 0) {
         $output = trim($stdout);
@@ -165,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } else {
 
         $op = (string)$_POST['action'];
-        $allowed = ['merge', 'split', 'interleave', 'compress', 'number'];
+        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr'];
 
         if (!in_array($op, $allowed, true)) {
             $error = 'Unbekannte Aktion.';
@@ -275,6 +283,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$error && $op === 'number' && count($valid) !== 1) {
                     $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
                 }
+                if (!$error && in_array($op, ['pdfa', 'ocr'], true) && count($valid) !== 1) {
+                    $error = 'Für diese Funktion bitte genau eine PDF auswählen.';
+                }
 
                 if (!$error) {
 
@@ -325,6 +336,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
                         }
 
+                        if ($op === 'pdfa') {
+                            $version = (string)($_POST['pdfa_version'] ?? 'pdfa-2');
+                            if (!in_array($version, ['pdfa-1', 'pdfa-2', 'pdfa-3'], true)) {
+                                $version = 'pdfa-2';
+                            }
+                            $args[] = '--output-type=' . $version;
+                        }
+                        if ($op === 'ocr') {
+                            $language = (string)($_POST['ocr_language'] ?? 'deu');
+                            if (!in_array($language, ['deu', 'eng', 'deu+eng'], true)) {
+                                $language = 'deu';
+                            }
+                            $args[] = '--language=' . $language;
+                        }
                         foreach ($paths as $p) {
                             $args[] = $p;
                         }
@@ -563,6 +588,43 @@ $result = $_SESSION['result'] ?? null;
                 </div>
             </section>
 
+            <section class="tool-card tool-pdfa">
+                <div class="tool-icon">▤</div>
+                <div class="tool-content">
+                    <h3>PDF/A erstellen</h3>
+                    <p>PDF für die Langzeitarchivierung umwandeln.</p>
+                    <label class="option-label" for="pdfa_version">PDF/A-Version</label>
+                    <select id="pdfa_version" name="pdfa_version">
+                        <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
+                        <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
+                        <option value="pdfa-3">PDF/A-3b – für eingebettete Dateien</option>
+                    </select>
+                    <button class="task-button" type="submit" name="action" value="pdfa">PDF/A erstellen</button>
+                </div>
+            </section>
+            <section class="tool-card tool-ocr">
+                <div class="tool-icon">⌕</div>
+                <div class="tool-content">
+                    <h3>OCR</h3>
+                    <p>Scan-PDFs durchsuchbar machen.</p>
+                    <label class="option-label" for="ocr_language">Erkennungssprache</label>
+                    <select id="ocr_language" name="ocr_language">
+                        <option value="deu" selected>Deutsch</option>
+                        <option value="eng">Englisch</option>
+                        <option value="deu+eng">Deutsch + Englisch</option>
+                    </select>
+                    <button class="task-button" type="submit" name="action" value="ocr">OCR starten</button>
+                </div>
+            </section>
+            <section class="tool-card tool-qes planned-card" aria-label="QES-Signatur – in Planung">
+                <div class="tool-icon">✍</div>
+                <div class="tool-content">
+                    <h3>QES signieren</h3>
+                    <p>PDF qualifiziert elektronisch signieren.</p>
+                    <span class="planned-tag">In Planung</span>
+                </div>
+            </section>
+
         </div>
 
         <p class="muted center processing-hint">
@@ -577,7 +639,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=6"></script>
+<script src="/assets/app.js?v=7"></script>
 
 </body>
 </html>
