@@ -8,6 +8,11 @@ PiPDFBox ist eine Webanwendung für den Raspberry Pi zur Verarbeitung von PDF-Da
 
 - PDF-Dateien über den Browser hochladen
 - PDF-Aufträge serverseitig verarbeiten
+- PDFs zusammenführen, aufteilen, verschachteln und nummerieren
+- PDFs komprimieren
+- PDF/A-1b, PDF/A-2b und PDF/A-3b erstellen
+- OCR mit Deutsch, Englisch oder beiden Sprachen
+- OCR und PDF/A in einem Arbeitsschritt
 - Verarbeitung über die Weboberfläche verfolgen
 - Ergebnisse herunterladen
 - Automatische Prüfung und Installation benötigter Abhängigkeiten
