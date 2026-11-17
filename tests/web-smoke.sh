@@ -140,7 +140,7 @@ SERVER_PID=$!
 
 server_ready=0
 for _ in $(seq 1 50); do
-    if curl -fsS "$BASE_URL/" -o "$TMP_DIR/initial.html" 2>/dev/null; then
+    if curl -fsS -c "$COOKIE_FILE" -b "$COOKIE_FILE" "$BASE_URL/" -o "$TMP_DIR/initial.html" 2>/dev/null; then
         server_ready=1
         break
     fi
