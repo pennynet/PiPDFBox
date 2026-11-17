@@ -45,8 +45,19 @@ nproc
 free -h
 ```
 
-For each operation, run at least three times and record elapsed time and peak RAM.
-Example for compression:
+For a repeatable elapsed-time and output-size comparison, use the included
+benchmark harness (it makes temporary copies and never modifies the source PDFs):
+
+```sh
+python3 -m pip install pypdf
+python3 tests/benchmark_worker.py compress /path/to/representative.pdf --profile stark --repeat 3
+python3 tests/benchmark_worker.py merge /path/to/first.pdf /path/to/second.pdf --repeat 3
+python3 tests/benchmark_worker.py number /path/to/representative.pdf --repeat 3
+```
+
+The harness reports each run and median/minimum/maximum time. To measure peak memory
+on Linux, also wrap one individual worker invocation in `/usr/bin/time -v` as shown
+below:
 
 ```sh
 TESTDIR=$(mktemp -d)
