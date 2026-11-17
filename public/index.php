@@ -85,7 +85,12 @@ if (empty($_SESSION['logged_in'])) {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
 
-        if (password_verify(
+        if (!hash_equals(
+            $_SESSION['csrf'],
+            (string)($_POST['login_csrf'] ?? '')
+        )) {
+            $error = 'Sitzung abgelaufen. Bitte Seite neu laden.';
+        } elseif (password_verify(
             (string)$_POST['password'],
             $config['password_hash']
         )) {
@@ -95,9 +100,9 @@ if (empty($_SESSION['logged_in'])) {
 
             header('Location: /');
             exit;
+        } else {
+            $error = 'Passwort falsch.';
         }
-
-        $error = 'Passwort falsch.';
     }
     ?>
     <!doctype html>
@@ -123,6 +128,7 @@ if (empty($_SESSION['logged_in'])) {
             <?php endif; ?>
 
             <form method="post">
+                <input type="hidden" name="login_csrf" value="<?= h($_SESSION['csrf']) ?>">
                 <label for="password">Passwort</label>
                 <input
                     id="password"
@@ -305,6 +311,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $profile = 'stark';
                             }
                             $args[] = '--profile=' . $profile;
+                            if (!empty($config['parallel_gs'])) {
+                                $args[] = '--parallel-gs';
+                            }
                         }
 
                         if ($op === 'number') {
@@ -324,9 +333,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
 
                         $workerOutput = '';
-                        $rc = runWorker($args, $workerOutput);
+                        $rc = 1;
 
-                        if ($rc === 0) {
+                        // Globaler Worker-Lock: Auch parallele HTTP-Anfragen
+                        // dürfen niemals mehrere PDF-Worker gleichzeitig starten.
+                        $lockHandle = @fopen(rtrim($dataDir, '/') . '/worker.lock', 'c');
+                        if ($lockHandle === false) {
+                            $error = 'Worker-Sperre konnte nicht geöffnet werden.';
+                        } else {
+                            if (!flock($lockHandle, LOCK_EX)) {
+                                $error = 'Worker-Sperre konnte nicht gesetzt werden.';
+                            } else {
+                                try {
+                                    // Eine weitere Anfrage wartet hier, bis der
+                                    // laufende PDF-Auftrag beendet ist.
+                                    $rc = runWorker($args, $workerOutput);
+                                } finally {
+                                    flock($lockHandle, LOCK_UN);
+                                }
+                            }
+                            fclose($lockHandle);
+                        }
+
+                        if (!$error && $rc === 0) {
 
                             $out = trim($workerOutput);
                             $base = basename($out);
@@ -347,7 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
                             }
 
-                        } else {
+                        } elseif (!$error) {
                             $error = 'PDF-Verarbeitung fehlgeschlagen: ' .
                                 ($workerOutput ?: 'Unbekannter Fehler');
                         }
