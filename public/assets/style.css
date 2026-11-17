@@ -250,3 +250,28 @@
 .tool-grid > .tool-qes {
     min-height: 260px;
 }
+
+
+/* Versionshinweis und GitHub-Link in der Kopfzeile. */
+.brand h1 .version {
+    margin-left: 5px;
+    color: #718096;
+    font-size: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+.github-link {
+    color: #2459a6;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 650;
+}
+.github-link:hover { text-decoration: underline; }
+@media(max-width: 540px) {
+    .header-actions { gap: 12px; }
+}
