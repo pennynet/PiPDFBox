@@ -302,6 +302,7 @@ install_app() {
     fi
 
     install -d -o www-data -g www-data -m 700 "$DATA_DIR" "$DATA_DIR/jobs"
+    install_cleanup_timer
     install -d -o root -g www-data -m 750 "$CONFIG_DIR"
 
     cat > "$PHP_INI_FILE" <<'PHPINI'
@@ -380,6 +381,40 @@ check_installation() {
 }
 
 
+install_cleanup_timer() {
+    install -m 755 "$APP_DIR/cleanup.py" /opt/pipdfbox/cleanup.py
+    cat > /etc/systemd/system/pipdfbox-cleanup.service <<'EOF'
+[Unit]
+Description=PiPDFBox – alte PDF-Aufträge bereinigen
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/pipdfbox/cleanup.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pipdfbox
+EOF
+    cat > /etc/systemd/system/pipdfbox-cleanup.timer <<'EOF'
+[Unit]
+Description=PiPDFBox – stündliche Bereinigung alter PDF-Aufträge
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+Persistent=true
+Unit=pipdfbox-cleanup.service
+
+[Install]
+WantedBy=timers.target
+EOF
+    chmod 644 /etc/systemd/system/pipdfbox-cleanup.service /etc/systemd/system/pipdfbox-cleanup.timer
+    systemctl daemon-reload
+    systemctl enable --now pipdfbox-cleanup.timer
+}
+
 install_launcher() {
     install -d -m 755 /usr/local/bin
     ln -sfn "$APP_DIR/install.sh" /usr/local/bin/pipdfbox
@@ -392,6 +427,7 @@ update_app() {
     download_app_from_github || return 1
     check_app || return 1
     install_launcher
+    install_cleanup_timer
     info "Anwendungscode aktualisiert. Einstellungen und PDF-Aufträge bleiben erhalten."
 }
 
@@ -432,6 +468,10 @@ uninstall_app() {
             systemctl restart "$PHP_FPM_SERVICE"
         fi
     fi
+
+    systemctl disable --now pipdfbox-cleanup.timer 2>/dev/null || true
+    rm -f /etc/systemd/system/pipdfbox-cleanup.timer /etc/systemd/system/pipdfbox-cleanup.service
+    systemctl daemon-reload
 
     if [[ "$choice" == "2" ]]; then
         rm -rf "$CONFIG_DIR" "$DATA_DIR"
