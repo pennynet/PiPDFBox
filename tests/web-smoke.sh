@@ -198,7 +198,7 @@ bad_login_code="$(
 assert_http "$bad_login_code" "200" "Anmeldung ohne CSRF-Token"
 grep -q "Sitzung abgelaufen" "$TMP_DIR/bad-login.html" || fail "Login ohne CSRF-Token wurde nicht abgewiesen."
 
-login_csrf="$(extract_login_csrf "$TMP_DIR/initial.html")"
+login_csrf="$(extract_login_csrf "$TMP_DIR/bad-login.html")"
 login_code="$(
     curl -sS -o "$TMP_DIR/login-response.html" -w '%{http_code}' \
         -c "$COOKIE_FILE" -b "$COOKIE_FILE" \
