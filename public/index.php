@@ -119,7 +119,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=11">
+        <link rel="stylesheet" href="/assets/style.css?v=12">
     </head>
     <body>
         <main class="login">
@@ -605,7 +605,7 @@ $result = $_SESSION['result'] ?? null;
                     <label class="option-label" for="pdfa_version">PDF/A-Version</label>
                     <select id="pdfa_version" name="pdfa_version">
                         <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
-                        <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
+                        <option value="pdfa-2" selected>PDF/A-2b – empfohlen</option>
                         <option value="pdfa-3">PDF/A-3b – für eingebettete Dateien</option>
                     </select>
                     <button class="task-button" type="submit" name="action" value="pdfa">PDF archivieren</button>
