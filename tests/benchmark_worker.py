@@ -36,6 +36,7 @@ def main() -> int:
     parser.add_argument("--worker", type=Path, default=Path(__file__).resolve().parents[1] / "worker.py")
     parser.add_argument("--profile", choices=("maximal", "stark", "mittel"), default="stark")
     parser.add_argument("--repeat", type=int, default=3)
+    parser.add_argument("--parallel-gs", action="store_true", help="Farb- und Graustufen-Ghostscript-Läufe parallel ausführen")
     args = parser.parse_args()
 
     if args.repeat < 1:
@@ -65,6 +66,8 @@ def main() -> int:
             command = [sys.executable, str(args.worker), op, str(workdir)]
             if op == "compress":
                 command.append(f"--profile={args.profile}")
+                if args.parallel_gs:
+                    command.append("--parallel-gs")
             command.extend(str(path) for path in copied)
 
             started = time.perf_counter()
@@ -95,6 +98,7 @@ def main() -> int:
     summary = {
         "operation": op,
         "profile": args.profile if op == "compress" else None,
+        "parallel_gs": args.parallel_gs if op == "compress" else False,
         "runs": results,
         "median_seconds": round(statistics.median(times), 3),
         "min_seconds": round(min(times), 3),
