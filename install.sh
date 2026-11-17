@@ -90,6 +90,10 @@ REQUIRED_PACKAGES=(
     python3
     python3-pypdf
     python3-pil
+    ocrmypdf
+    tesseract-ocr
+    tesseract-ocr-deu
+    tesseract-ocr-eng
     iproute2
 )
 
@@ -127,6 +131,10 @@ check_dependencies() {
     php -m | grep -qi '^session$' || { error "PHP-Erweiterung session fehlt."; return 1; }
     php -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
     php -m | grep -qi '^mbstring$' || { error "PHP-Erweiterung mbstring fehlt."; return 1; }
+    command -v ocrmypdf >/dev/null || { error "OCRmyPDF ist nicht verfügbar."; return 1; }
+    command -v tesseract >/dev/null || { error "Tesseract ist nicht verfügbar."; return 1; }
+    tesseract --list-langs 2>/dev/null | grep -qx 'deu' || { error "Tesseract-Sprachpaket Deutsch fehlt."; return 1; }
+    tesseract --list-langs 2>/dev/null | grep -qx 'eng' || { error "Tesseract-Sprachpaket Englisch fehlt."; return 1; }
     python3 -c 'import PIL; import pypdf' 2>/dev/null || {
         error "Python-Module Pillow oder pypdf fehlen."
         return 1
