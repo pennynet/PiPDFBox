@@ -67,9 +67,13 @@ def main():
     parallel_gs = '--parallel-gs' in raw_inputs
     profile_args = [p for p in raw_inputs if p.startswith('--profile=')]
     profile = profile_args[0].split('=', 1)[1] if profile_args else 'stark'
+    output_type_args = [p for p in raw_inputs if p.startswith('--output-type=')]
+    output_type = output_type_args[0].split('=', 1)[1] if output_type_args else 'pdfa-2'
+    language_args = [p for p in raw_inputs if p.startswith('--language=')]
+    language = language_args[0].split('=', 1)[1] if language_args else 'deu'
     inputs = [
         p for p in raw_inputs
-        if p != '--reverse-second' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=')
+        if p != '--reverse-second' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
     ]
     outdir = Path(outdir).resolve()
     for p in inputs:
@@ -151,6 +155,31 @@ def main():
         with open(outdir / name, 'wb') as f:
             writer.write(f)
 
+    elif op in ('pdfa', 'ocr', 'ocr_pdfa'):
+        if len(inputs) != 1:
+            raise ValueError('Genau eine PDF erforderlich')
+        if output_type not in ('pdfa-1', 'pdfa-2', 'pdfa-3'):
+            raise ValueError('Ungültige PDF/A-Version')
+        if language not in ('deu', 'eng', 'deu+eng'):
+            raise ValueError('Ungültige OCR-Sprache')
+        source = Path(inputs[0])
+        name = {'pdfa': 'archiv.pdf', 'ocr': 'durchsuchbar.pdf', 'ocr_pdfa': 'ocr_archiv.pdf'}[op]
+        destination = outdir / name
+        ocrmypdf = shutil.which('ocrmypdf')
+        if not ocrmypdf:
+            raise RuntimeError('OCRmyPDF ist nicht installiert. Bitte install.sh ausführen.')
+        command = [ocrmypdf, '--jobs', '1', '--skip-text']
+        if op in ('ocr', 'ocr_pdfa'):
+            command.extend(['--language', language, '--rotate-pages', '--deskew'])
+        command.extend(['--output-type', 'pdf' if op == 'ocr' else output_type])
+        command.extend([str(source), str(destination)])
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True, timeout=3600)
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or exc.stdout or 'OCRmyPDF meldet einen unbekannten Fehler').strip()
+            raise RuntimeError(detail[-1200:])
+        if not destination.is_file() or destination.stat().st_size == 0:
+            raise RuntimeError('OCRmyPDF hat keine gültige Ausgabedatei erzeugt')
     elif op == 'compress':
         if len(inputs) != 1:
             raise ValueError('Genau eine PDF erforderlich')
