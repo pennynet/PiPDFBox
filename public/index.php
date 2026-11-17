@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } else {
 
         $op = (string)$_POST['action'];
-        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr', 'ocr_pdfa'];
+        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr'];
 
         if (!in_array($op, $allowed, true)) {
             $error = 'Unbekannte Aktion.';
@@ -275,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$error && $op === 'number' && count($valid) !== 1) {
                     $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
                 }
-                if (!$error && in_array($op, ['pdfa', 'ocr', 'ocr_pdfa'], true) && count($valid) !== 1) {
+                if (!$error && in_array($op, ['pdfa', 'ocr'], true) && count($valid) !== 1) {
                     $error = 'Für diese Funktion bitte genau eine PDF auswählen.';
                 }
 
@@ -328,15 +328,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
                         }
 
-                        if (in_array($op, ['pdfa', 'ocr_pdfa'], true)) {
-                            $version = (string)($_POST[$op === 'pdfa' ? 'pdfa_version' : 'ocr_pdfa_version'] ?? 'pdfa-2');
+                        if ($op === 'pdfa') {
+                            $version = (string)($_POST['pdfa_version'] ?? 'pdfa-2');
                             if (!in_array($version, ['pdfa-1', 'pdfa-2', 'pdfa-3'], true)) {
                                 $version = 'pdfa-2';
                             }
                             $args[] = '--output-type=' . $version;
                         }
-                        if (in_array($op, ['ocr', 'ocr_pdfa'], true)) {
-                            $language = (string)($_POST[$op === 'ocr' ? 'ocr_language' : 'ocr_pdfa_language'] ?? 'deu');
+                        if ($op === 'ocr') {
+                            $language = (string)($_POST['ocr_language'] ?? 'deu');
                             if (!in_array($language, ['deu', 'eng', 'deu+eng'], true)) {
                                 $language = 'deu';
                             }
@@ -608,24 +608,12 @@ $result = $_SESSION['result'] ?? null;
                     <button class="task-button" type="submit" name="action" value="ocr">OCR starten</button>
                 </div>
             </section>
-            <section class="tool-card tool-ocr-pdfa">
-                <div class="tool-icon">⌕▤</div>
+            <section class="tool-card tool-qes planned-card" aria-label="QES-Signatur – in Planung">
+                <div class="tool-icon">✍</div>
                 <div class="tool-content">
-                    <h3>OCR + PDF/A</h3>
-                    <p>Scan durchsuchbar und archivgerecht speichern.</p>
-                    <label class="option-label" for="ocr_pdfa_language">Erkennungssprache</label>
-                    <select id="ocr_pdfa_language" name="ocr_pdfa_language">
-                        <option value="deu" selected>Deutsch</option>
-                        <option value="eng">Englisch</option>
-                        <option value="deu+eng">Deutsch + Englisch</option>
-                    </select>
-                    <label class="option-label" for="ocr_pdfa_version">PDF/A-Version</label>
-                    <select id="ocr_pdfa_version" name="ocr_pdfa_version">
-                        <option value="pdfa-1">PDF/A-1b – ältere Archivsysteme</option>
-                        <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
-                        <option value="pdfa-3">PDF/A-3b – mit eingebetteten Dateien</option>
-                    </select>
-                    <button class="task-button" type="submit" name="action" value="ocr_pdfa">OCR + PDF/A starten</button>
+                    <h3>QES signieren</h3>
+                    <p>PDF qualifiziert elektronisch signieren.</p>
+                    <span class="planned-tag">In Planung</span>
                 </div>
             </section>
 
