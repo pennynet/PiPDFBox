@@ -85,7 +85,12 @@ if (empty($_SESSION['logged_in'])) {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password'])) {
 
-        if (password_verify(
+        if (!hash_equals(
+            $_SESSION['csrf'],
+            (string)($_POST['login_csrf'] ?? '')
+        )) {
+            $error = 'Sitzung abgelaufen. Bitte Seite neu laden.';
+        } elseif (password_verify(
             (string)$_POST['password'],
             $config['password_hash']
         )) {
@@ -95,9 +100,9 @@ if (empty($_SESSION['logged_in'])) {
 
             header('Location: /');
             exit;
+        } else {
+            $error = 'Passwort falsch.';
         }
-
-        $error = 'Passwort falsch.';
     }
     ?>
     <!doctype html>
@@ -123,6 +128,7 @@ if (empty($_SESSION['logged_in'])) {
             <?php endif; ?>
 
             <form method="post">
+                <input type="hidden" name="login_csrf" value="<?= h($_SESSION['csrf']) ?>">
                 <label for="password">Passwort</label>
                 <input
                     id="password"
