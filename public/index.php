@@ -539,7 +539,7 @@ $result = $_SESSION['result'] ?? null;
                             value="1"
                             <?= !empty($config['parallel_gs']) ? 'checked' : '' ?>
                         >
-                        Parallelverarbeitung mit Ghostscript verwenden
+                        Parallelverarbeitung mit Ghostscript
                     </label>
                     <button class="task-button" type="submit" name="action" value="compress">
                         PDF komprimieren
