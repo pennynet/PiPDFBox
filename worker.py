@@ -171,7 +171,7 @@ def main():
         command = [ocrmypdf, '--jobs', '1']
         if op == 'pdfa':
             # PDF/A-Konvertierung ohne OCR: vorhandene Inhalte unverändert übernehmen.
-            command.extend(['--ocr-engine', 'none', '--output-type', output_type])
+            command.extend(['--tesseract-timeout', '0', '--output-type', output_type])
         else:
             command.extend([
                 '--skip-text', '--language', language,
