@@ -141,21 +141,30 @@ check_app() {
     }
 }
 
-get_port() {
-    local value
-    read -r -p "Gewünschter Port (1024–65535): " value
-    [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1024 && value <= 65535 )) || {
-        error "Ungültiger Port."
-        return 1
-    }
-    printf '%s' "$value"
-}
-
 port_in_use_by_other_service() {
     local wanted="$1"
     local current="${2:-}"
     [[ "$wanted" == "$current" ]] && return 1
     ss -H -ltn | awk '{print $4}' | grep -Eq "(:|\\])${wanted}$"
+}
+
+get_available_port() {
+    local current="${1:-}" value
+    while true; do
+        if ! IFS= read -r -p "Gewünschter Port (1024–65535): " value; then
+            return 1
+        fi
+        if [[ ! "$value" =~ ^[0-9]+$ ]] || (( value < 1024 || value > 65535 )); then
+            error "Ungültiger Port. Bitte einen Wert zwischen 1024 und 65535 eingeben."
+            continue
+        fi
+        if port_in_use_by_other_service "$value" "$current"; then
+            error "Port $value ist bereits belegt. Bitte einen anderen Port eingeben."
+            continue
+        fi
+        printf '%s' "$value"
+        return 0
+    done
 }
 
 backup_file() {
@@ -261,11 +270,7 @@ install_app() {
     local old_port="" port password password2 hash answer config_tmp
     [[ -f "$PORT_FILE" ]] && old_port="$(cat "$PORT_FILE")"
 
-    port="$(get_port)" || return 1
-    if port_in_use_by_other_service "$port" "$old_port"; then
-        error "Port $port wird bereits von einem anderen Dienst verwendet."
-        return 1
-    fi
+    port="$(get_available_port "$old_port")" || return 1
 
     read -r -s -p "Neues Zugangspasswort: " password
     echo
@@ -332,13 +337,8 @@ change_port() {
     [[ -f "$PORT_FILE" ]] || { error "Keine gespeicherte Portnummer. Bitte zuerst einrichten."; return 1; }
     old_port="$(cat "$PORT_FILE")"
     echo "Aktueller Port: $old_port"
-    new_port="$(get_port)" || return 1
+    new_port="$(get_available_port "$old_port")" || return 1
     [[ "$new_port" == "$old_port" ]] && { info "Dieser Port ist bereits eingestellt."; return 0; }
-
-    if port_in_use_by_other_service "$new_port" "$old_port"; then
-        error "Port $new_port wird bereits von einem anderen Dienst verwendet."
-        return 1
-    fi
 
     apply_nginx_config "$new_port" || return 1
     printf '%s\n' "$new_port" > "$PORT_FILE"
