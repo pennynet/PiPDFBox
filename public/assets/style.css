@@ -115,7 +115,7 @@
     margin-top: 22px;
 }
 
-@media(max-width: 980px) {
+@media(max-width: 760px) {
     .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media(max-width: 600px) {
@@ -194,3 +194,8 @@
     font-size: 12px;
     font-weight: 700;
 }
+
+
+/* Explizite Farben der neu hinzugefügten Aktionsbuttons. */
+.tool-pdfa .task-button { background-color: #3976a8; }
+.tool-ocr .task-button { background-color: #239b91; }
