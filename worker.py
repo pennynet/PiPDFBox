@@ -155,7 +155,7 @@ def main():
         with open(outdir / name, 'wb') as f:
             writer.write(f)
 
-    elif op in ('pdfa', 'ocr', 'ocr_pdfa'):
+    elif op in ('pdfa', 'ocr'):
         if len(inputs) != 1:
             raise ValueError('Genau eine PDF erforderlich')
         if output_type not in ('pdfa-1', 'pdfa-2', 'pdfa-3'):
@@ -163,21 +163,28 @@ def main():
         if language not in ('deu', 'eng', 'deu+eng'):
             raise ValueError('Ungültige OCR-Sprache')
         source = Path(inputs[0])
-        name = {'pdfa': 'archiv.pdf', 'ocr': 'durchsuchbar.pdf', 'ocr_pdfa': 'ocr_archiv.pdf'}[op]
+        name = {'pdfa': 'archiv.pdf', 'ocr': 'durchsuchbar.pdf'}[op]
         destination = outdir / name
         ocrmypdf = shutil.which('ocrmypdf')
         if not ocrmypdf:
             raise RuntimeError('OCRmyPDF ist nicht installiert. Bitte install.sh ausführen.')
-        command = [ocrmypdf, '--jobs', '1', '--skip-text']
-        if op in ('ocr', 'ocr_pdfa'):
-            command.extend(['--language', language, '--rotate-pages', '--deskew'])
-        command.extend(['--output-type', 'pdf' if op == 'ocr' else output_type])
+        command = [ocrmypdf, '--jobs', '1']
+        if op == 'pdfa':
+            # PDF/A-Konvertierung ohne OCR: vorhandene Inhalte unverändert übernehmen.
+            command.extend(['--ocr-engine', 'none', '--output-type', output_type])
+        else:
+            command.extend([
+                '--skip-text', '--language', language,
+                '--rotate-pages', '--deskew', '--output-type', 'pdf'
+            ])
         command.extend([str(source), str(destination)])
         try:
-            subprocess.run(command, check=True, capture_output=True, text=True, timeout=3600)
+            subprocess.run(command, check=True, capture_output=True, text=True, timeout=840)
         except subprocess.CalledProcessError as exc:
             detail = (exc.stderr or exc.stdout or 'OCRmyPDF meldet einen unbekannten Fehler').strip()
             raise RuntimeError(detail[-1200:])
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('Die Verarbeitung hat das Zeitlimit von 14 Minuten überschritten.')
         if not destination.is_file() or destination.stat().st_size == 0:
             raise RuntimeError('OCRmyPDF hat keine gültige Ausgabedatei erzeugt')
     elif op == 'compress':
