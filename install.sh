@@ -451,13 +451,20 @@ uninstall_app() {
         *) error "Ungültige Auswahl."; return 1 ;;
     esac
 
+    # Timer und ggf. laufenden Bereinigungsdienst vor dem Entfernen des
+    # Anwendungscodes stoppen, damit kein Dienst auf cleanup.py zugreift.
+    systemctl disable --now pipdfbox-cleanup.timer 2>/dev/null || true
+    systemctl stop pipdfbox-cleanup.service 2>/dev/null || true
+    rm -f /etc/systemd/system/pipdfbox-cleanup.timer /etc/systemd/system/pipdfbox-cleanup.service
+    systemctl daemon-reload
+    systemctl reset-failed pipdfbox-cleanup.service 2>/dev/null || true
+
     rm -f "$NGINX_ENABLED" "$NGINX_SITE"
     if command -v nginx >/dev/null 2>&1; then
         nginx -t || { error "Nginx-Test fehlgeschlagen. Abbruch."; return 1; }
         systemctl reload nginx
     fi
     rm -f /usr/local/bin/pipdfbox
-    rm -rf "$APP_DIR"
 
     # PiPDFBox-spezifische PHP-FPM-Einstellungen gehören zur Anwendung
     # und werden bei jeder Deinstallation entfernt.
@@ -468,9 +475,7 @@ uninstall_app() {
         fi
     fi
 
-    systemctl disable --now pipdfbox-cleanup.timer 2>/dev/null || true
-    rm -f /etc/systemd/system/pipdfbox-cleanup.timer /etc/systemd/system/pipdfbox-cleanup.service
-    systemctl daemon-reload
+    rm -rf "$APP_DIR"
 
     if [[ "$choice" == "2" ]]; then
         rm -rf "$CONFIG_DIR" "$DATA_DIR"
