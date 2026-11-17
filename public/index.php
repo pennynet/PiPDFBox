@@ -545,6 +545,31 @@ $result = $_SESSION['result'] ?? null;
                 </div>
             </section>
 
+            <section class="tool-card tool-qes planned-card" aria-label="PDF-Signatur – in Planung">
+                <div class="tool-icon">✍</div>
+                <div class="tool-content">
+                    <h3>PDF signieren</h3>
+                    <p>PDF qualifiziert elektronisch signieren.</p>
+                    <span class="planned-tag">In Planung</span>
+                </div>
+            </section>
+
+            <section class="tool-card tool-number">
+                <div class="tool-icon">☷</div>
+                <div class="tool-content">
+                    <h3>PDF nummerieren</h3>
+                    <p>Seitennummern mit individuellem Vorspann hinzufügen.</p>
+                    <label class="option-label" for="number_prefix">
+                        Vorspann für die Seitennummerierung
+                    </label>
+                    <input type="text" id="number_prefix" name="number_prefix"
+                           maxlength="150" placeholder="z. B. Vertraulich – Projektakte">
+                    <button class="task-button" type="submit" name="action" value="number">
+                        PDF nummerieren
+                    </button>
+                </div>
+            </section>
+
             <section class="tool-card tool-compress">
                 <div class="tool-icon">⤢</div>
                 <div class="tool-content">
@@ -572,22 +597,6 @@ $result = $_SESSION['result'] ?? null;
                 </div>
             </section>
 
-            <section class="tool-card tool-number">
-                <div class="tool-icon">☷</div>
-                <div class="tool-content">
-                    <h3>PDF nummerieren</h3>
-                    <p>Seitennummern mit individuellem Vorspann hinzufügen.</p>
-                    <label class="option-label" for="number_prefix">
-                        Vorspann für die Seitennummerierung
-                    </label>
-                    <input type="text" id="number_prefix" name="number_prefix"
-                           maxlength="150" placeholder="z. B. Vertraulich – Projektakte">
-                    <button class="task-button" type="submit" name="action" value="number">
-                        PDF nummerieren
-                    </button>
-                </div>
-            </section>
-
             <section class="tool-card tool-pdfa">
                 <div class="tool-icon">▤</div>
                 <div class="tool-content">
@@ -602,6 +611,7 @@ $result = $_SESSION['result'] ?? null;
                     <button class="task-button" type="submit" name="action" value="pdfa">PDF archivieren</button>
                 </div>
             </section>
+
             <section class="tool-card tool-ocr">
                 <div class="tool-icon">⌕</div>
                 <div class="tool-content">
@@ -614,14 +624,6 @@ $result = $_SESSION['result'] ?? null;
                         <option value="deu+eng">Deutsch + Englisch</option>
                     </select>
                     <button class="task-button" type="submit" name="action" value="ocr">PDF Texterkennung starten</button>
-                </div>
-            </section>
-            <section class="tool-card tool-qes planned-card" aria-label="PDF-Signatur – in Planung">
-                <div class="tool-icon">✍</div>
-                <div class="tool-content">
-                    <h3>PDF signieren</h3>
-                    <p>PDF qualifiziert elektronisch signieren.</p>
-                    <span class="planned-tag">In Planung</span>
                 </div>
             </section>
 
