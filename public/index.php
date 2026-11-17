@@ -575,12 +575,6 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDF komprimieren</h3>
                     <p>Dateigröße reduzieren und Qualität auswählen.</p>
-                    <label class="option-label" for="compress_profile">Komprimierungsstärke</label>
-                    <select id="compress_profile" name="compress_profile">
-                        <option value="maximal">Maximal – kleinste Datei</option>
-                        <option value="stark" selected>Stark – gute Balance</option>
-                        <option value="mittel">Mittel – bessere Bildqualität</option>
-                    </select>
                     <label class="option-check" for="parallel_gs">
                         <input
                             type="checkbox"
@@ -591,6 +585,12 @@ $result = $_SESSION['result'] ?? null;
                         >
                         Parallelverarbeitung mit Ghostscript
                     </label>
+                    <label class="option-label" for="compress_profile">Komprimierungsstärke</label>
+                    <select id="compress_profile" name="compress_profile">
+                        <option value="maximal">Maximal – kleinste Datei</option>
+                        <option value="stark" selected>Stark – gute Balance</option>
+                        <option value="mittel">Mittel – bessere Bildqualität</option>
+                    </select>
                     <button class="task-button" type="submit" name="action" value="compress">
                         PDF komprimieren
                     </button>
