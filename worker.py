@@ -134,7 +134,9 @@ def main():
         total = len(reader.pages)
 
         for index, original_page in enumerate(reader.pages, 1):
-            page = original_page
+            # pypdf 7 requires the page to belong to a writer before
+            # merge_page() changes its content streams.
+            page = writer.add_page(original_page)
             if page.rotation:
                 page.transfer_rotation_to_content()
 
@@ -144,7 +146,6 @@ def main():
 
             overlay = make_number_overlay(width, height, label)
             page.merge_page(overlay)
-            writer.add_page(page)
 
         name = 'nummeriert.pdf'
         with open(outdir / name, 'wb') as f:
