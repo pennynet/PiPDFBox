@@ -46,17 +46,26 @@ function runWorker(array $args, string &$output): int {
         $args
     );
 
+    // stderr in eine Datei schreiben, damit umfangreiche OCR-Fortschrittsmeldungen
+    // die Worker-Pipe nicht füllen und den Prozess blockieren.
+    $stderrFile = tempnam(sys_get_temp_dir(), 'pipdfbox-worker-');
+    if ($stderrFile === false) {
+        $output = 'Temporäre Worker-Datei konnte nicht angelegt werden.';
+        return 1;
+    }
+
     $p = proc_open(
         $cmd,
         [
             0 => ['pipe', 'r'],
             1 => ['pipe', 'w'],
-            2 => ['pipe', 'w']
+            2 => ['file', $stderrFile, 'w']
         ],
         $pipes
     );
 
     if (!is_resource($p)) {
+        @unlink($stderrFile);
         $output = 'Worker konnte nicht gestartet werden.';
         return 1;
     }
@@ -66,10 +75,9 @@ function runWorker(array $args, string &$output): int {
     $stdout = stream_get_contents($pipes[1]);
     fclose($pipes[1]);
 
-    $stderr = stream_get_contents($pipes[2]);
-    fclose($pipes[2]);
-
     $code = proc_close($p);
+    $stderr = is_file($stderrFile) ? (string)file_get_contents($stderrFile) : '';
+    @unlink($stderrFile);
 
     if ($code === 0) {
         $output = trim($stdout);
