@@ -119,7 +119,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=8">
+        <link rel="stylesheet" href="/assets/style.css?v=9">
     </head>
     <body>
         <main class="login">
@@ -591,7 +591,7 @@ $result = $_SESSION['result'] ?? null;
             <section class="tool-card tool-pdfa">
                 <div class="tool-icon">▤</div>
                 <div class="tool-content">
-                    <h3>PDF/A erstellen</h3>
+                    <h3>PDF archivieren</h3>
                     <p>PDF für die Langzeitarchivierung umwandeln.</p>
                     <label class="option-label" for="pdfa_version">PDF/A-Version</label>
                     <select id="pdfa_version" name="pdfa_version">
@@ -599,13 +599,13 @@ $result = $_SESSION['result'] ?? null;
                         <option value="pdfa-2" selected>PDF/A-2b – empfohlener Standard</option>
                         <option value="pdfa-3">PDF/A-3b – für eingebettete Dateien</option>
                     </select>
-                    <button class="task-button" type="submit" name="action" value="pdfa">PDF/A erstellen</button>
+                    <button class="task-button" type="submit" name="action" value="pdfa">PDF archivieren</button>
                 </div>
             </section>
             <section class="tool-card tool-ocr">
                 <div class="tool-icon">⌕</div>
                 <div class="tool-content">
-                    <h3>OCR</h3>
+                    <h3>PDF Texterkennung</h3>
                     <p>Scan-PDFs durchsuchbar machen.</p>
                     <label class="option-label" for="ocr_language">Erkennungssprache</label>
                     <select id="ocr_language" name="ocr_language">
@@ -613,13 +613,13 @@ $result = $_SESSION['result'] ?? null;
                         <option value="eng">Englisch</option>
                         <option value="deu+eng">Deutsch + Englisch</option>
                     </select>
-                    <button class="task-button" type="submit" name="action" value="ocr">OCR starten</button>
+                    <button class="task-button" type="submit" name="action" value="ocr">PDF Texterkennung starten</button>
                 </div>
             </section>
-            <section class="tool-card tool-qes planned-card" aria-label="QES-Signatur – in Planung">
+            <section class="tool-card tool-qes planned-card" aria-label="PDF-Signatur – in Planung">
                 <div class="tool-icon">✍</div>
                 <div class="tool-content">
-                    <h3>QES signieren</h3>
+                    <h3>PDF signieren</h3>
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <span class="planned-tag">In Planung</span>
                 </div>
