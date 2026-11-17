@@ -33,7 +33,7 @@
 .tool-number { --tool-color: #d65391; }
 .tool-pdfa { --tool-color: #3976a8; }
 .tool-ocr { --tool-color: #239b91; }
-.tool-ocr-pdfa { --tool-color: #6b70bd; }
+.tool-qes { --tool-color: #64748b; }
 
 .tool-icon {
     width: 44px;
@@ -181,3 +181,16 @@
 /* Einheitliches Raster für alle acht Funktionskacheln. */
 .tool-card { min-height: 300px; }
 .tool-content select { min-height: 42px; }
+
+.planned-card .tool-content { justify-content: flex-start; }
+.planned-tag {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: auto;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #eef1f5;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+}
