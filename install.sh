@@ -94,6 +94,7 @@ REQUIRED_PACKAGES=(
     tesseract-ocr
     tesseract-ocr-deu
     tesseract-ocr-eng
+    tesseract-ocr-osd
     iproute2
 )
 
@@ -135,6 +136,7 @@ check_dependencies() {
     command -v tesseract >/dev/null || { error "Tesseract ist nicht verfügbar."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'deu' || { error "Tesseract-Sprachpaket Deutsch fehlt."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'eng' || { error "Tesseract-Sprachpaket Englisch fehlt."; return 1; }
+    tesseract --list-langs 2>/dev/null | grep -qx 'osd' || { error "Tesseract-Sprachpaket für Orientierungserkennung fehlt."; return 1; }
     python3 -c 'import PIL; import pypdf' 2>/dev/null || {
         error "Python-Module Pillow oder pypdf fehlen."
         return 1
