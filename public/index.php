@@ -126,7 +126,7 @@ if (empty($_SESSION['logged_in'])) {
             <div class="brand">
                 <span class="logo">PDF</span>
                 <div>
-                    <h1>PiPDFBox</h1>
+                    <h1>PiPDFBox <span class="version">v1.0.0</span></h1>
                     <p>Lokale PDF-Werkstatt</p>
                 </div>
             </div>
@@ -421,7 +421,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=8">
+    <link rel="stylesheet" href="/assets/style.css?v=14">
 </head>
 <body>
 
@@ -429,12 +429,15 @@ $result = $_SESSION['result'] ?? null;
     <div class="brand">
         <span class="logo">PDF</span>
         <div>
-            <h1>PiPDFBox</h1>
+            <h1>PiPDFBox <span class="version">v1.0.0</span></h1>
             <p>Lokale PDF-Werkstatt</p>
         </div>
     </div>
 
-    <a class="logout" href="/?logout=1">Abmelden</a>
+    <nav class="header-actions">
+        <a class="github-link" href="https://github.com/pennynet/PiPDFBox" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="logout" href="/?logout=1">Abmelden</a>
+    </nav>
 </header>
 
 <main class="wrap">

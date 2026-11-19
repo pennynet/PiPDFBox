@@ -1,145 +1,87 @@
 # PiPDFBox – Installation und Wiederherstellung
 
-Diese Anleitung beschreibt die Neuinstallation von PiPDFBox auf Debian GNU/Linux 13 (Trixie).
+Diese Anleitung ergänzt den Installer für Debian GNU/Linux 13 (Trixie). Der unterstützte Standardweg ist die Installation über `install.sh`; die manuelle Einrichtung einzelner Systemdienste ist normalerweise nicht erforderlich.
 
-Die Programmdateien werden aus dem privaten GitHub-Repository geladen. Temporäre PDF-Dateien und Auftragsdaten werden nicht gesichert.
+## Voraussetzungen
 
-## 1. Voraussetzungen
+- Raspberry Pi mit Debian 13 (Trixie)
+- sudo-Rechte
+- Netzwerkzugriff auf GitHub und die Debian-Paketquellen
+- Berechtigter Zugriff auf das PiPDFBox-Repository (derzeit privat)
 
-- Debian 13 (Trixie)
-- Python 3.13
-- PHP 8.4 mit PHP-FPM
-- Nginx
-- Ghostscript
-- qpdf
-- Poppler
+Der Installer installiert bzw. prüft die benötigten Pakete, darunter Nginx, PHP 8.4 FPM, Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch.
 
-## 2. Systempakete installieren
+## Neuinstallation
 
-    sudo apt update
-    sudo apt install -y nginx php8.4-fpm php8.4-cli php8.4-common php8.4-mbstring php8.4-xml php8.4-zip ghostscript qpdf poppler-utils python3 python3-pypdf python3-pil git
+```bash
+git clone https://github.com/pennynet/PiPDFBox.git
+cd PiPDFBox
+sudo bash install.sh
+```
 
-## 3. GitHub-Repository laden
+Das Repository ist privat. Verwende einen berechtigten GitHub-Zugang über SSH oder eine sichere Git-Credential-Verwaltung. Zugangstoken niemals in die URL schreiben, in Dateien ablegen oder committen.
 
-Das Repository ist privat. Für den Zugriff ist eine GitHub-Anmeldung mit einem geeigneten Personal Access Token oder SSH-Zugang erforderlich.
+Im Menü **1) Neuinstallation / Einrichtung** wählen und den Anweisungen folgen. Der Installer fragt den gewünschten Port und ein Zugangspasswort ab.
 
-    sudo git clone https://github.com/pennynet/PiPDFBox.git /opt/pipdfbox
+Anschließend im Browser öffnen:
 
-Das Token niemals in die URL schreiben oder in GitHub speichern.
+```
+http://<IP-Adresse-des-Raspberry-Pi>:<gewählter-Port>
+```
 
-## 4. Datenverzeichnis einrichten
+## Verzeichnisse
 
-    sudo install -d -o www-data -g www-data -m 700 /var/lib/pipdfbox
-    sudo install -d -o www-data -g www-data -m 700 /var/lib/pipdfbox/jobs
+| Pfad | Zweck |
+|---|---|
+| `/opt/pipdfbox` | Anwendungscode |
+| `/etc/pipdfbox` | Zugangskonfiguration und Port |
+| `/var/lib/pipdfbox/jobs` | Uploads, Ergebnisse und temporäre Auftragsdateien |
+| `/etc/systemd/system/pipdfbox-cleanup.service` | Dienst für die automatische Bereinigung |
+| `/etc/systemd/system/pipdfbox-cleanup.timer` | Stündlicher Bereinigungs-Timer |
 
-Das Verzeichnis enthält nur temporäre Aufträge und PDFs. Es wird bei einer Neuinstallation leer angelegt.
+Die systemd-Unit-Dateien werden vom Installer erzeugt und gehören nicht ins Git-Repository.
 
-## 5. Nginx konfigurieren
+## Aktualisierung
 
-Datei `/etc/nginx/sites-available/pipdfbox` anlegen:
+`sudo pipdfbox` starten und Menüpunkt **4) Anwendung aktualisieren** wählen. Die Aktualisierung lädt den aktuellen Programmstand von GitHub und richtet den Bereinigungs-Timer erneut ein. Konfiguration und vorhandene Aufträge bleiben erhalten.
 
-    server {
-        listen 8181 default_server;
-        listen [::]:8181 default_server;
-        server_name _;
-        root /opt/pipdfbox/public;
-        index index.php;
-        client_max_body_size 900M;
-        server_tokens off;
+Alternativ kann der Installer direkt gestartet werden:
 
-        location / {
-            try_files $uri $uri/ /index.php?$query_string;
-        }
+```bash
+sudo bash /opt/pipdfbox/install.sh
+```
 
-        location ~ \.php$ {
-            include snippets/fastcgi-php.conf;
-            fastcgi_pass unix:/run/php/php8.4-fpm.sock;
-            fastcgi_read_timeout 900s;
-        }
+## Installation prüfen
 
-        location ~* \.(?:py|ini|log|sh)$ {
-            deny all;
-        }
+Im Verwaltungsmenü **3) Installation prüfen** auswählen. Zusätzlich kann der Bereinigungs-Timer kontrolliert werden:
 
-        location ~ /\. {
-            deny all;
-        }
-    }
+```bash
+systemctl status pipdfbox-cleanup.timer
+systemctl list-timers pipdfbox-cleanup.timer
+```
 
-Site aktivieren und prüfen:
+## Automatische Bereinigung
 
-    sudo ln -s /etc/nginx/sites-available/pipdfbox /etc/nginx/sites-enabled/pipdfbox
-    sudo nginx -t
-    sudo systemctl reload nginx
+Ein systemd-Timer startet zehn Minuten nach dem Booten und danach stündlich die Bereinigung. Auftragsverzeichnisse mit einem Alter von mehr als 24 Stunden werden entfernt. Wenn gerade ein PDF-Worker läuft, überspringt das Bereinigungsskript den Durchlauf und versucht es beim nächsten Timer-Lauf erneut.
 
-Falls bereits eine Datei oder ein Link mit diesem Namen existiert, zuerst prüfen und nicht überschreiben.
+## Deinstallation
 
-## 6. PHP-FPM konfigurieren
+Im Verwaltungsmenü **5) PiPDFBox deinstallieren** auswählen.
 
-Datei `/etc/php/8.4/fpm/conf.d/99-pipdfbox.ini` anlegen:
+- **Nur Anwendung entfernen:** Programmdateien, Nginx-Site, Launcher, PiPDFBox-spezifische PHP-FPM-Konfiguration und Bereinigungs-Timer werden entfernt. Konfiguration und PDF-Aufträge bleiben erhalten.
+- **Alles entfernen:** Zusätzlich werden `/etc/pipdfbox` und `/var/lib/pipdfbox` gelöscht.
 
-    upload_max_filesize=400M
-    post_max_size=900M
-    max_execution_time=900
-    max_input_time=240
-    memory_limit=256M
+Allgemeine Systempakete (z. B. Nginx, PHP, Python, Ghostscript) werden bewusst nicht automatisch deinstalliert.
 
-In `/etc/php/8.4/fpm/pool.d/www.conf` müssen diese Werte gelten:
+## Wiederherstellung
 
-    user = www-data
-    group = www-data
-    listen = /run/php/php8.4-fpm.sock
-    request_terminate_timeout = 900
+Für eine Wiederherstellung zunächst PiPDFBox neu installieren. Falls Konfiguration oder Auftragsdaten gesichert wurden, diese nur bei gestoppter Anwendung und mit passenden Dateirechten zurückspielen.
 
-PHP-FPM neu starten:
+Programmcode und Dokumentation liegen in GitHub. Die lokale Konfiguration unter `/etc` und Auftragsdaten unter `/var/lib` sind nicht Bestandteil des Repositorys und müssen separat gesichert werden, wenn sie erhalten bleiben sollen.
 
-    sudo systemctl restart php8.4-fpm
+## Sicherheitshinweise
 
-## 7. Dienste aktivieren
-
-    sudo systemctl enable nginx
-    sudo systemctl enable php8.4-fpm
-    sudo systemctl restart nginx
-    sudo systemctl restart php8.4-fpm
-
-## 8. Installation prüfen
-
-Python-Bibliotheken:
-
-    python3 -m pip show pypdf Pillow
-
-Programme:
-
-    command -v python3
-    command -v gs
-    command -v qpdf
-    command -v pdftoppm
-
-PHP-FPM-Werte:
-
-    sudo php-fpm8.4 -i | grep -E '^(max_execution_time|memory_limit|upload_max_filesize|post_max_size|max_input_time)'
-
-Nginx-Konfiguration:
-
-    sudo nginx -t
-
-Danach im Browser öffnen:
-
-    http://<IP-Adresse-des-Raspberry-Pi>:8181
-
-Alle fünf Funktionen mit Test-PDFs prüfen: Zusammenführen, Teilen, Interleave, Komprimieren und Nummerieren.
-
-## 9. Spätere Aktualisierung
-
-Im bestehenden Installationsverzeichnis:
-
-    cd /opt/pipdfbox
-    sudo git pull
-
-## 10. Wichtige Hinweise
-
-- GitHub enthält Programmcode und diese Anleitung.
-- Temporäre PDF-Dateien und Auftragsdaten unter `/var/lib/pipdfbox` werden nicht gesichert.
-- Systemkonfigurationen unter `/etc` sind nicht Bestandteil des GitHub-Repositories.
-- Zugangstoken, Passwörter und private PDFs gehören niemals ins Repository.
-- Vor Änderungen an Systemkonfigurationen die betroffenen Dateien separat sichern.
+- Keine Passwörter, Tokens, privaten PDFs oder lokalen Konfigurationsdateien committen.
+- Die Anwendung ist für ein vertrauenswürdiges lokales Netzwerk vorgesehen.
+- PiPDFBox nicht ohne zusätzliche Absicherung direkt aus dem Internet erreichbar machen.
+- Vor manuellen Änderungen an Dateien unter `/etc` Sicherungskopien anlegen.
