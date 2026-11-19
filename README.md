@@ -37,7 +37,7 @@ cd PiPDFBox
 sudo bash install.sh
 ```
 
-Das Repository ist derzeit privat. Zum Klonen ist ein entsprechend berechtigter GitHub-Zugang erforderlich. Zugangstoken niemals in die Git-URL einbetten oder committen.
+Das Repository ist öffentlich. Für das Klonen und den Download ist keine GitHub-Anmeldung erforderlich.
 
 Der Installer führt durch die Einrichtung, fragt einen Webserver-Port und ein Zugangspasswort ab und richtet die Anwendung ein. Anschließend ist PiPDFBox unter folgender Adresse erreichbar:
 
