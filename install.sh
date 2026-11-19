@@ -64,9 +64,28 @@ download_app_from_github() {
         return 1
     fi
 
-    # Bestehendes Verzeichnis nicht löschen: nur den Anwendungscode aktualisieren.
-    # install.sh bleibt erhalten, ebenso .git und lokale Zusatzdateien.
-    cp -a "$extracted/." "$APP_DIR/"
+    # Zielverzeichnis bei einer Erstinstallation anlegen. Bestehende lokale
+    # Zusatzdateien und .git bleiben erhalten.
+    if ! install -d -m 755 "$APP_DIR"; then
+        rm -rf "$temp_dir"
+        error "Anwendungsverzeichnis konnte nicht angelegt werden: $APP_DIR"
+        return 1
+    fi
+
+    if ! cp -a "$extracted/." "$APP_DIR/"; then
+        rm -rf "$temp_dir"
+        error "Anwendungscode konnte nicht vollständig nach $APP_DIR kopiert werden."
+        return 1
+    fi
+
+    # Wenn APP_DIR ein Git-Checkout ist, die Eigentümer von .git für den
+    # Anwendungscode übernehmen. So bleiben spätere Git-Operationen möglich.
+    if [[ -d "$APP_DIR/.git" ]] && ! chown -R --reference="$APP_DIR/.git" "$APP_DIR"; then
+        rm -rf "$temp_dir"
+        error "Eigentümer des Git-Checkouts konnten nicht angepasst werden."
+        return 1
+    fi
+
     if [[ -f "$extracted/VERSION" ]]; then
         VERSION="$(tr -d '[:space:]' < "$extracted/VERSION")"
     fi
@@ -179,10 +198,18 @@ get_available_port() {
 
 backup_file() {
     local file="$1"
+    local backup_path
+
     if [[ -f "$file" ]]; then
-        cp -a "$file" "$file.backup.$(date +%Y%m%d-%H%M%S)"
-        info "Sicherung erstellt: $file"
+        backup_path="$file.backup.$(date +%Y%m%d-%H%M%S)"
+        if ! cp -a "$file" "$backup_path"; then
+            error "Sicherung konnte nicht erstellt werden: $backup_path"
+            return 1
+        fi
+        info "Sicherung erstellt: $backup_path"
     fi
+
+    return 0
 }
 
 write_nginx_config() {
@@ -222,48 +249,115 @@ EOF
 
 apply_nginx_config() {
     local port="$1"
-    local temp_file old_link_target="" had_link=0 backup=""
-    temp_file="$(mktemp "${NGINX_SITE}.tmp.XXXXXX")"
-    write_nginx_config "$port" "$temp_file"
+    local temp_file="" old_link_target="" had_link=0
+    local backup="" had_site=0
+
+    if ! temp_file="$(mktemp "${NGINX_SITE}.tmp.XXXXXX")"; then
+        error "Temporäre Nginx-Konfiguration konnte nicht angelegt werden."
+        return 1
+    fi
+    if ! write_nginx_config "$port" "$temp_file"; then
+        error "Neue Nginx-Konfiguration konnte nicht geschrieben werden."
+        rm -f "$temp_file"
+        return 1
+    fi
 
     if [[ -L "$NGINX_ENABLED" ]]; then
         had_link=1
-        old_link_target="$(readlink "$NGINX_ENABLED")"
+        if ! old_link_target="$(readlink "$NGINX_ENABLED")"; then
+            error "Bisheriges Nginx-Ziel konnte nicht gelesen werden."
+            rm -f "$temp_file"
+            return 1
+        fi
     elif [[ -e "$NGINX_ENABLED" ]]; then
         error "$NGINX_ENABLED existiert und ist kein Symlink. Bitte erst manuell prüfen."
         rm -f "$temp_file"
         return 1
     fi
 
-    backup_file "$NGINX_SITE"
     if [[ -f "$NGINX_SITE" ]]; then
+        had_site=1
         backup="${NGINX_SITE}.rollback.$$"
-        cp -a "$NGINX_SITE" "$backup"
+        if ! cp -a "$NGINX_SITE" "$backup"; then
+            error "Sicherung der bisherigen Nginx-Konfiguration fehlgeschlagen."
+            rm -f "$temp_file" "$backup"
+            return 1
+        fi
+        if ! backup_file "$NGINX_SITE"; then
+            error "Zusätzliche Sicherung der Nginx-Konfiguration fehlgeschlagen."
+            rm -f "$temp_file" "$backup"
+            return 1
+        fi
     fi
 
-    install -m 644 "$temp_file" "$NGINX_SITE"
-    rm -f "$temp_file"
-    ln -sfn "$NGINX_SITE" "$NGINX_ENABLED"
+    rollback_nginx_config() {
+        local reason="$1"
+        local restore_ok=1
+        error "$reason – vorherige Nginx-Konfiguration wird wiederhergestellt."
 
-    if ! nginx -t; then
-        error "Nginx-Test fehlgeschlagen – vorherige Konfiguration wird wiederhergestellt."
-        if [[ -n "$backup" && -f "$backup" ]]; then
-            cp -a "$backup" "$NGINX_SITE"
-            rm -f "$backup"
+        if (( had_site )); then
+            if ! cp -a "$backup" "$NGINX_SITE"; then
+                error "KRITISCH: Vorherige Nginx-Konfiguration konnte nicht wiederhergestellt werden: $backup"
+                restore_ok=0
+            fi
         else
-            rm -f "$NGINX_SITE"
+            if ! rm -f "$NGINX_SITE"; then
+                error "KRITISCH: Neue Nginx-Konfiguration konnte nicht entfernt werden."
+                restore_ok=0
+            fi
         fi
+
         if (( had_link )); then
-            ln -sfn "$old_link_target" "$NGINX_ENABLED"
+            if ! ln -sfn "$old_link_target" "$NGINX_ENABLED"; then
+                error "KRITISCH: Vorheriger Nginx-Symlink konnte nicht wiederhergestellt werden."
+                restore_ok=0
+            fi
         else
-            rm -f "$NGINX_ENABLED"
+            if ! rm -f "$NGINX_ENABLED"; then
+                error "KRITISCH: Neuer Nginx-Symlink konnte nicht entfernt werden."
+                restore_ok=0
+            fi
         fi
-        nginx -t || true
+
+        rm -f "$temp_file"
+        if (( restore_ok )); then
+            if nginx -t; then
+                if systemctl reload nginx; then
+                    rm -f "$backup"
+                else
+                    error "KRITISCH: Nginx konnte nach dem Rollback nicht neu geladen werden."
+                    restore_ok=0
+                fi
+            else
+                error "KRITISCH: Auch die wiederhergestellte Nginx-Konfiguration ist ungültig."
+                restore_ok=0
+            fi
+        fi
+
+        if (( ! restore_ok && had_site )); then
+            error "Die Rollback-Sicherung bleibt zur manuellen Wiederherstellung erhalten: $backup"
+        fi
+        return 1
+    }
+
+    if ! install -m 644 "$temp_file" "$NGINX_SITE"; then
+        rollback_nginx_config "Installation der neuen Nginx-Konfiguration fehlgeschlagen"
+        return 1
+    fi
+    if ! ln -sfn "$NGINX_SITE" "$NGINX_ENABLED"; then
+        rollback_nginx_config "Aktivieren der Nginx-Site fehlgeschlagen"
+        return 1
+    fi
+    if ! nginx -t; then
+        rollback_nginx_config "Nginx-Konfigurationstest fehlgeschlagen"
+        return 1
+    fi
+    if ! systemctl reload nginx; then
+        rollback_nginx_config "Nginx-Reload fehlgeschlagen"
         return 1
     fi
 
-    [[ -n "$backup" ]] && rm -f "$backup"
-    systemctl reload nginx
+    rm -f "$temp_file" "$backup"
 }
 
 install_app() {
@@ -291,7 +385,7 @@ install_app() {
         error "Passwörter sind leer oder stimmen nicht überein."
         return 1
     fi
-    hash="$(php -r 'echo password_hash($argv[1], PASSWORD_DEFAULT);' "$password")"
+    hash="$(printf '%s' "$password" | php -r 'echo password_hash(stream_get_contents(STDIN), PASSWORD_DEFAULT);')"
     unset password password2
     [[ -n "$hash" ]] || { error "Passwort-Hash konnte nicht erzeugt werden."; return 1; }
 
@@ -338,6 +432,9 @@ EOF
     chown root:www-data "$PORT_FILE"
     chmod 640 "$PORT_FILE"
     systemctl restart "$PHP_FPM_SERVICE"
+
+    # Launcher erst nach erfolgreicher vollständiger Einrichtung bereitstellen.
+    install_launcher
 
     info "PiPDFBox wurde eingerichtet."
     echo "Aufruf: http://<IP-Adresse-des-Raspberry-Pi>:$port"
@@ -451,8 +548,12 @@ uninstall_app() {
         *) error "Ungültige Auswahl."; return 1 ;;
     esac
 
-    # Timer und ggf. laufenden Bereinigungsdienst vor dem Entfernen des
-    # Anwendungscodes stoppen, damit kein Dienst auf cleanup.py zugreift.
+    # Nginx-Konfiguration vor Änderungen prüfen.
+    if command -v nginx >/dev/null 2>&1; then
+        nginx -t || { error "Nginx-Test fehlgeschlagen. Abbruch."; return 1; }
+    fi
+
+    # Bereinigungsdienst vor dem Entfernen des Anwendungscodes stoppen.
     systemctl disable --now pipdfbox-cleanup.timer 2>/dev/null || true
     systemctl stop pipdfbox-cleanup.service 2>/dev/null || true
     rm -f /etc/systemd/system/pipdfbox-cleanup.timer /etc/systemd/system/pipdfbox-cleanup.service
@@ -461,7 +562,6 @@ uninstall_app() {
 
     rm -f "$NGINX_ENABLED" "$NGINX_SITE"
     if command -v nginx >/dev/null 2>&1; then
-        nginx -t || { error "Nginx-Test fehlgeschlagen. Abbruch."; return 1; }
         systemctl reload nginx
     fi
     rm -f /usr/local/bin/pipdfbox
@@ -487,7 +587,6 @@ uninstall_app() {
 
 main() {
     require_root
-    install_launcher
     while true; do
         echo
         echo "================================"
