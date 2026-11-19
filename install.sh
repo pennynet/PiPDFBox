@@ -66,13 +66,24 @@ download_app_from_github() {
 
     # Zielverzeichnis bei einer Erstinstallation anlegen. Bestehende lokale
     # Zusatzdateien und .git bleiben erhalten.
-    install -d -m 755 "$APP_DIR"
-    cp -a "$extracted/." "$APP_DIR/"
+    if ! install -d -m 755 "$APP_DIR"; then
+        rm -rf "$temp_dir"
+        error "Anwendungsverzeichnis konnte nicht angelegt werden: $APP_DIR"
+        return 1
+    fi
+
+    if ! cp -a "$extracted/." "$APP_DIR/"; then
+        rm -rf "$temp_dir"
+        error "Anwendungscode konnte nicht vollständig nach $APP_DIR kopiert werden."
+        return 1
+    fi
 
     # Wenn APP_DIR ein Git-Checkout ist, die Eigentümer von .git für den
     # Anwendungscode übernehmen. So bleiben spätere Git-Operationen möglich.
-    if [[ -d "$APP_DIR/.git" ]]; then
-        chown -R --reference="$APP_DIR/.git" "$APP_DIR"
+    if [[ -d "$APP_DIR/.git" ]] && ! chown -R --reference="$APP_DIR/.git" "$APP_DIR"; then
+        rm -rf "$temp_dir"
+        error "Eigentümer des Git-Checkouts konnten nicht angepasst werden."
+        return 1
     fi
 
     if [[ -f "$extracted/VERSION" ]]; then
@@ -230,48 +241,94 @@ EOF
 
 apply_nginx_config() {
     local port="$1"
-    local temp_file old_link_target="" had_link=0 backup=""
-    temp_file="$(mktemp "${NGINX_SITE}.tmp.XXXXXX")"
-    write_nginx_config "$port" "$temp_file"
+    local temp_file="" old_link_target="" had_link=0
+    local backup="" had_site=0
+
+    if ! temp_file="$(mktemp "${NGINX_SITE}.tmp.XXXXXX")"; then
+        error "Temporäre Nginx-Konfiguration konnte nicht angelegt werden."
+        return 1
+    fi
+    if ! write_nginx_config "$port" "$temp_file"; then
+        error "Neue Nginx-Konfiguration konnte nicht geschrieben werden."
+        rm -f "$temp_file"
+        return 1
+    fi
 
     if [[ -L "$NGINX_ENABLED" ]]; then
         had_link=1
-        old_link_target="$(readlink "$NGINX_ENABLED")"
+        if ! old_link_target="$(readlink "$NGINX_ENABLED")"; then
+            error "Bisheriges Nginx-Ziel konnte nicht gelesen werden."
+            rm -f "$temp_file"
+            return 1
+        fi
     elif [[ -e "$NGINX_ENABLED" ]]; then
         error "$NGINX_ENABLED existiert und ist kein Symlink. Bitte erst manuell prüfen."
         rm -f "$temp_file"
         return 1
     fi
 
-    backup_file "$NGINX_SITE"
     if [[ -f "$NGINX_SITE" ]]; then
-        backup="${NGINX_SITE}.rollback.$$"
-        cp -a "$NGINX_SITE" "$backup"
+        had_site=1
+        backup="${NGINX_SITE}.rollback.$"
+        if ! cp -a "$NGINX_SITE" "$backup"; then
+            error "Sicherung der bisherigen Nginx-Konfiguration fehlgeschlagen."
+            rm -f "$temp_file" "$backup"
+            return 1
+        fi
+        if ! backup_file "$NGINX_SITE"; then
+            error "Zusätzliche Sicherung der Nginx-Konfiguration fehlgeschlagen."
+            rm -f "$temp_file" "$backup"
+            return 1
+        fi
     fi
 
-    install -m 644 "$temp_file" "$NGINX_SITE"
-    rm -f "$temp_file"
-    ln -sfn "$NGINX_SITE" "$NGINX_ENABLED"
+    rollback_nginx_config() {
+        local reason="$1"
+        error "$reason – vorherige Nginx-Konfiguration wird wiederhergestellt."
 
-    if ! nginx -t; then
-        error "Nginx-Test fehlgeschlagen – vorherige Konfiguration wird wiederhergestellt."
-        if [[ -n "$backup" && -f "$backup" ]]; then
-            cp -a "$backup" "$NGINX_SITE"
-            rm -f "$backup"
+        if (( had_site )); then
+            if ! cp -a "$backup" "$NGINX_SITE"; then
+                error "KRITISCH: Vorherige Nginx-Konfiguration konnte nicht wiederhergestellt werden: $backup"
+            fi
         else
             rm -f "$NGINX_SITE"
         fi
+
         if (( had_link )); then
-            ln -sfn "$old_link_target" "$NGINX_ENABLED"
+            if ! ln -sfn "$old_link_target" "$NGINX_ENABLED"; then
+                error "KRITISCH: Vorheriger Nginx-Symlink konnte nicht wiederhergestellt werden."
+            fi
         else
             rm -f "$NGINX_ENABLED"
         fi
-        nginx -t || true
+
+        rm -f "$temp_file" "$backup"
+        if nginx -t; then
+            systemctl reload nginx || error "Nginx konnte nach dem Rollback nicht neu geladen werden."
+        else
+            error "KRITISCH: Auch die wiederhergestellte Nginx-Konfiguration ist ungültig."
+        fi
+        return 1
+    }
+
+    if ! install -m 644 "$temp_file" "$NGINX_SITE"; then
+        rollback_nginx_config "Installation der neuen Nginx-Konfiguration fehlgeschlagen"
+        return 1
+    fi
+    if ! ln -sfn "$NGINX_SITE" "$NGINX_ENABLED"; then
+        rollback_nginx_config "Aktivieren der Nginx-Site fehlgeschlagen"
+        return 1
+    fi
+    if ! nginx -t; then
+        rollback_nginx_config "Nginx-Konfigurationstest fehlgeschlagen"
+        return 1
+    fi
+    if ! systemctl reload nginx; then
+        rollback_nginx_config "Nginx-Reload fehlgeschlagen"
         return 1
     fi
 
-    [[ -n "$backup" ]] && rm -f "$backup"
-    systemctl reload nginx
+    rm -f "$temp_file" "$backup"
 }
 
 install_app() {
@@ -299,7 +356,7 @@ install_app() {
         error "Passwörter sind leer oder stimmen nicht überein."
         return 1
     fi
-    hash="$(php -r 'echo password_hash($argv[1], PASSWORD_DEFAULT);' "$password")"
+    hash="$(printf '%s' "$password" | php -r 'echo password_hash(stream_get_contents(STDIN), PASSWORD_DEFAULT);')"
     unset password password2
     [[ -n "$hash" ]] || { error "Passwort-Hash konnte nicht erzeugt werden."; return 1; }
 
