@@ -68,6 +68,13 @@ download_app_from_github() {
     # Zusatzdateien und .git bleiben erhalten.
     install -d -m 755 "$APP_DIR"
     cp -a "$extracted/." "$APP_DIR/"
+
+    # Wenn APP_DIR ein Git-Checkout ist, die Eigentümer von .git für den
+    # Anwendungscode übernehmen. So bleiben spätere Git-Operationen möglich.
+    if [[ -d "$APP_DIR/.git" ]]; then
+        chown -R --reference="$APP_DIR/.git" "$APP_DIR"
+    fi
+
     if [[ -f "$extracted/VERSION" ]]; then
         VERSION="$(tr -d '[:space:]' < "$extracted/VERSION")"
     fi
@@ -335,13 +342,13 @@ EOF
         return 1
     }
 
-    # Launcher erst bereitstellen, wenn der Anwendungscode vollständig installiert ist.
-    install_launcher
-
     printf '%s\n' "$port" > "$PORT_FILE"
     chown root:www-data "$PORT_FILE"
     chmod 640 "$PORT_FILE"
     systemctl restart "$PHP_FPM_SERVICE"
+
+    # Launcher erst nach erfolgreicher vollständiger Einrichtung bereitstellen.
+    install_launcher
 
     info "PiPDFBox wurde eingerichtet."
     echo "Aufruf: http://<IP-Adresse-des-Raspberry-Pi>:$port"
