@@ -64,8 +64,9 @@ download_app_from_github() {
         return 1
     fi
 
-    # Bestehendes Verzeichnis nicht löschen: nur den Anwendungscode aktualisieren.
-    # install.sh bleibt erhalten, ebenso .git und lokale Zusatzdateien.
+    # Zielverzeichnis bei einer Erstinstallation anlegen. Bestehende lokale
+    # Zusatzdateien und .git bleiben erhalten.
+    install -d -m 755 "$APP_DIR"
     cp -a "$extracted/." "$APP_DIR/"
     if [[ -f "$extracted/VERSION" ]]; then
         VERSION="$(tr -d '[:space:]' < "$extracted/VERSION")"
@@ -334,6 +335,9 @@ EOF
         return 1
     }
 
+    # Launcher erst bereitstellen, wenn der Anwendungscode vollständig installiert ist.
+    install_launcher
+
     printf '%s\n' "$port" > "$PORT_FILE"
     chown root:www-data "$PORT_FILE"
     chmod 640 "$PORT_FILE"
@@ -490,7 +494,6 @@ uninstall_app() {
 
 main() {
     require_root
-    install_launcher
     while true; do
         echo
         echo "================================"
