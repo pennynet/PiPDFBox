@@ -269,7 +269,7 @@ apply_nginx_config() {
 
     if [[ -f "$NGINX_SITE" ]]; then
         had_site=1
-        backup="${NGINX_SITE}.rollback.$"
+        backup="${NGINX_SITE}.rollback.$$"
         if ! cp -a "$NGINX_SITE" "$backup"; then
             error "Sicherung der bisherigen Nginx-Konfiguration fehlgeschlagen."
             rm -f "$temp_file" "$backup"
