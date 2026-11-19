@@ -119,7 +119,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=13">
+        <link rel="stylesheet" href="/assets/style.css?v=14">
     </head>
     <body>
         <main class="login">
@@ -180,23 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } else {
 
             $files = $_FILES['pdfs'] ?? null;
-
-            // Temporäre Upload-Diagnose
-            if (is_array($files) && isset($files['name'])) {
-                foreach ($files['name'] as $i => $originalName) {
-                    $tmp = $files['tmp_name'][$i] ?? '';
-                    $log = [
-                        'time' => date('c'),
-                        'name' => $originalName,
-                        'size' => $files['size'][$i] ?? null,
-                        'tmp' => $tmp,
-                        'sha256' => ($tmp && is_uploaded_file($tmp))
-                            ? hash_file('sha256', $tmp)
-                            : null
-                    ];
-                    error_log('PiPDFBox UPLOAD: ' . json_encode($log, JSON_UNESCAPED_UNICODE));
-                }
-            }
 
             $valid = [];
 
