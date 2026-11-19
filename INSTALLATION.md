@@ -7,7 +7,7 @@ Diese Anleitung ergänzt den Installer für Debian GNU/Linux 13 (Trixie). Der un
 - Raspberry Pi mit Debian 13 (Trixie)
 - sudo-Rechte
 - Netzwerkzugriff auf GitHub und die Debian-Paketquellen
-- Berechtigter Zugriff auf das PiPDFBox-Repository (derzeit privat)
+- Netzwerkzugriff auf das öffentliche PiPDFBox-Repository auf GitHub
 
 Der Installer installiert bzw. prüft die benötigten Pakete, darunter Nginx, PHP 8.4 FPM, Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch.
 
@@ -19,7 +19,7 @@ cd PiPDFBox
 sudo bash install.sh
 ```
 
-Das Repository ist privat. Verwende einen berechtigten GitHub-Zugang über SSH oder eine sichere Git-Credential-Verwaltung. Zugangstoken niemals in die URL schreiben, in Dateien ablegen oder committen.
+Das Repository ist öffentlich. Für den Download und die Installation ist keine GitHub-Anmeldung und kein Zugangstoken erforderlich.
 
 Im Menü **1) Neuinstallation / Einrichtung** wählen und den Anweisungen folgen. Der Installer fragt den gewünschten Port und ein Zugangspasswort ab.
 
