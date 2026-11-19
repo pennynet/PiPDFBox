@@ -198,10 +198,18 @@ get_available_port() {
 
 backup_file() {
     local file="$1"
+    local backup_path
+
     if [[ -f "$file" ]]; then
-        cp -a "$file" "$file.backup.$(date +%Y%m%d-%H%M%S)"
-        info "Sicherung erstellt: $file"
+        backup_path="$file.backup.$(date +%Y%m%d-%H%M%S)"
+        if ! cp -a "$file" "$backup_path"; then
+            error "Sicherung konnte nicht erstellt werden: $backup_path"
+            return 1
+        fi
+        info "Sicherung erstellt: $backup_path"
     fi
+
+    return 0
 }
 
 write_nginx_config() {
@@ -284,29 +292,50 @@ apply_nginx_config() {
 
     rollback_nginx_config() {
         local reason="$1"
+        local restore_ok=1
         error "$reason – vorherige Nginx-Konfiguration wird wiederhergestellt."
 
         if (( had_site )); then
             if ! cp -a "$backup" "$NGINX_SITE"; then
                 error "KRITISCH: Vorherige Nginx-Konfiguration konnte nicht wiederhergestellt werden: $backup"
+                restore_ok=0
             fi
         else
-            rm -f "$NGINX_SITE"
+            if ! rm -f "$NGINX_SITE"; then
+                error "KRITISCH: Neue Nginx-Konfiguration konnte nicht entfernt werden."
+                restore_ok=0
+            fi
         fi
 
         if (( had_link )); then
             if ! ln -sfn "$old_link_target" "$NGINX_ENABLED"; then
                 error "KRITISCH: Vorheriger Nginx-Symlink konnte nicht wiederhergestellt werden."
+                restore_ok=0
             fi
         else
-            rm -f "$NGINX_ENABLED"
+            if ! rm -f "$NGINX_ENABLED"; then
+                error "KRITISCH: Neuer Nginx-Symlink konnte nicht entfernt werden."
+                restore_ok=0
+            fi
         fi
 
-        rm -f "$temp_file" "$backup"
-        if nginx -t; then
-            systemctl reload nginx || error "Nginx konnte nach dem Rollback nicht neu geladen werden."
-        else
-            error "KRITISCH: Auch die wiederhergestellte Nginx-Konfiguration ist ungültig."
+        rm -f "$temp_file"
+        if (( restore_ok )); then
+            if nginx -t; then
+                if systemctl reload nginx; then
+                    rm -f "$backup"
+                else
+                    error "KRITISCH: Nginx konnte nach dem Rollback nicht neu geladen werden."
+                    restore_ok=0
+                fi
+            else
+                error "KRITISCH: Auch die wiederhergestellte Nginx-Konfiguration ist ungültig."
+                restore_ok=0
+            fi
+        fi
+
+        if (( ! restore_ok && had_site )); then
+            error "Die Rollback-Sicherung bleibt zur manuellen Wiederherstellung erhalten: $backup"
         fi
         return 1
     }
