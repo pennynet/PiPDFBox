@@ -499,7 +499,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=32">
+    <link rel="stylesheet" href="/assets/style.css?v=33">
 </head>
 <body>
 
@@ -569,13 +569,6 @@ $result = $_SESSION['result'] ?? null;
 </dialog>
 
 <main class="wrap">
-
-    <section class="intro">
-        <p>
-            Dateien auswählen, Funktion festlegen und Ergebnis herunterladen.
-            Die Verarbeitung erfolgt direkt auf dem Raspberry Pi.
-        </p>
-    </section>
 
     <?php if ($error): ?>
         <div class="alert"><?= h($error) ?></div>
@@ -805,7 +798,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=21"></script>
+<script src="/assets/app.js?v=22"></script>
 
 </body>
 </html>
