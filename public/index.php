@@ -560,7 +560,6 @@ $result = $_SESSION['result'] ?? null;
 <main class="wrap">
 
     <section class="intro">
-        <h2>PDF-Dateien verarbeiten</h2>
         <p>
             Dateien auswählen, Funktion festlegen und Ergebnis herunterladen.
             Die Verarbeitung erfolgt direkt auf dem Raspberry Pi.
