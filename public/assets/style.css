@@ -746,3 +746,34 @@
     font-weight: 700;
 }
 .pdf-chip-download:hover { background: #d4eedb; }
+
+
+/* Dateikacheln über die gesamte Uploadfläche verteilen: maximal fünf pro Zeile. */
+.pdf-file-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: start;
+    justify-items: stretch;
+}
+.pdf-clear-all {
+    grid-column: 1 / -1;
+    width: max-content;
+}
+.pdf-chip {
+    width: 100%;
+    min-width: 0;
+}
+.pdf-chip-placeholder {
+    width: 100%;
+    min-width: 0;
+}
+.pdf-empty {
+    grid-column: 1 / -1;
+}
+@media(max-width: 900px) {
+    .pdf-file-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media(max-width: 540px) {
+    .pdf-file-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pdf-chip { width: 100%; }
+}
