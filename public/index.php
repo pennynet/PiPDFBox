@@ -461,7 +461,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $_SESSION['result'] = [
                                     'job' => $job,
                                     'file' => $base,
-                                    'name' => $base
+                                    'name' => $base,
+                                    'action' => $op
                                 ];
 
                                 $notice = $op === 'sign'
@@ -611,6 +612,10 @@ $result = $_SESSION['result'] ?? null;
                 <?php if ($result && is_file($dataDir . '/jobs/' . $result['job'] . '/' . $result['file'])): ?>
                     data-result-name="<?= h($result['name']) ?>"
                     data-result-url="/download.php?job=<?= h($result['job']) ?>&file=<?= rawurlencode($result['file']) ?>"
+                    data-result-action="<?= h((string)($result['action'] ?? '')) ?>"
+                    data-result-job="<?= h($result['job']) ?>"
+                    data-result-file="<?= h($result['file']) ?>"
+                    data-result-csrf="<?= h($_SESSION['csrf']) ?>"
                 <?php endif; ?>>
                 <span class="pdf-empty">Noch keine Dateien ausgewählt</span>
             </div>
@@ -800,7 +805,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=19"></script>
+<script src="/assets/app.js?v=20"></script>
 
 </body>
 </html>
