@@ -179,6 +179,26 @@ async function validateSelectedPdf() {
         if (!response.ok) throw new Error(data.error || 'Prüfung fehlgeschlagen.');
         const signature = (data.signatures || [])[0] || {};
         const summary = data.validationSummary || {};
+        // Bei gültigem qualifiziertem Zeitstempel den belegten Zeitpunkt anzeigen.
+        // Andernfalls den vom Signierenden in der Signatur angegebenen Zeitpunkt
+        // ausdrücklich als solchen kennzeichnen.
+        const signingTime = signature.timestampValid === true
+            ? (signature.bestSignatureTime || signature.signingTime || signature.claimedSigningTime)
+            : (signature.claimedSigningTime || signature.signingTime);
+        const formatDateTime = value => {
+            if (!value) return 'Nicht angegeben';
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? String(value)
+                : new Intl.DateTimeFormat('de-DE', {
+                    dateStyle: 'medium',
+                    timeStyle: 'medium',
+                    timeZone: 'Europe/Berlin'
+                }).format(date);
+        };
+        const signingTimeLabel = signature.timestampValid === true
+            ? 'Signierzeitpunkt (zeitgestempelt)'
+            : 'Signierzeitpunkt (laut Signatur)';
         const rows = [
             ['Datei', data.filename || file.name],
             ['Gesamtergebnis', data.valid === true ? 'Gültig' : 'Nicht gültig'],
@@ -188,6 +208,7 @@ async function validateSelectedPdf() {
             ['Signatur intakt', signature.signatureIntact === true ? 'Ja' : 'Nein'],
             ['Zertifikat gültig', signature.certValid === true ? 'Ja' : 'Nein'],
             ['Widerrufsprüfung', signature.revocationOk === true ? 'OK' : 'Nicht bestätigt'],
+            [signingTimeLabel, formatDateTime(signingTime)],
             ['Zeitstempel', signature.timestampValid === true ? 'Gültig' : 'Nicht bestätigt'],
             ['Qualifizierte Signatur', summary.hasQualifiedSignature === true ? 'Ja' : 'Nein'],
             ['Prüfzeitpunkt', data.validatedAt || 'Nicht angegeben']
