@@ -96,6 +96,8 @@ Die Deinstallation entfernt keine allgemeinen Systempakete wie Nginx, PHP, Ghost
 
 ## Dokumentation und Tests
 
+- [PiPDFBox-Handbuch (PDF)](public/handbuch.pdf)
+
 - [Installations- und Wiederherstellungsdetails](INSTALLATION.md)
 - [Änderungshistorie](CHANGELOG.md)
 - [Pi-5-Leistungsnotizen und Benchmark](docs/performance-pi5.md)
