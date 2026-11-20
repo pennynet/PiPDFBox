@@ -86,6 +86,10 @@ function setFiles(files) {
 }
 function renderFiles() {
     const files = currentFiles();
+    const completionNotice = document.querySelector('.success');
+    if (completionNotice && ['Verarbeitung abgeschlossen.', 'PDF wurde erfolgreich signiert.'].includes(completionNotice.textContent.trim())) {
+        completionNotice.hidden = files.length === 0 && !list.dataset.resultUrl;
+    }
     list.replaceChildren();
     uploadPrompt.hidden = files.length > 0;
     if (files.length > 1) {
