@@ -370,6 +370,12 @@ Q
         y=lly + stamp_height * 0.18,
         coords=CoordinateSystem.PAGE_DEFAULT,
     )
+y(
+        dest_page=page_index,
+        x=llx,
+        y=lly,
+        coords=CoordinateSystem.PAGE_DEFAULT,
+    )
 
 
 class OpenSCPdfSigner:
