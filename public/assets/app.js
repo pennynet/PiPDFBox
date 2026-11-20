@@ -138,13 +138,6 @@ function renderFiles() {
             event.preventDefault();
             validateSelectedPdf(file);
         });
-        const verify = document.createElement('button');
-        verify.type = 'button';
-        verify.className = 'pdf-chip-verify';
-        verify.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m8 15 2.5 2.5L16 12"/></svg>';
-        verify.title = 'Signatur prüfen';
-        verify.setAttribute('aria-label', 'Signatur von ' + file.name + ' prüfen');
-        verify.addEventListener('click', () => validateSelectedPdf(file));
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'pdf-chip-remove';
@@ -152,8 +145,20 @@ function renderFiles() {
         remove.title = 'Datei entfernen';
         remove.setAttribute('aria-label', file.name + ' entfernen');
         remove.addEventListener('click', () => setFiles(currentFiles().filter((_, i) => i !== index)));
-        chip.append(open, verify, remove);
-
+        chip.append(open, remove);
+        // Den Prüfbutton nur einblenden, wenn die PDF tatsächlich einen Signaturbereich enthält.
+        pdfHasSignature(file).then(hasSignature => {
+            if (!hasSignature || !chip.isConnected || !currentFiles().includes(file) || chip.querySelector('.pdf-chip-verify')) return;
+            const verify = document.createElement('button');
+            verify.type = 'button';
+            verify.className = 'pdf-chip-verify';
+            verify.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m8 15 2.5 2.5L16 12"/></svg>';
+            verify.title = 'Signatur prüfen';
+            verify.setAttribute('aria-label', 'Signatur von ' + file.name + ' prüfen');
+            verify.addEventListener('click', () => validateSelectedPdf(file));
+            chip.insertBefore(verify, remove);
+        }).catch(() => {});
+        
         // Zuverlässiges Maus-Verschieben per Pointer Events statt HTML5-Drag-and-drop.
         chip.addEventListener('pointerdown', event => {
             if (event.pointerType !== 'mouse' || event.button !== 0 || event.target.closest('.pdf-chip-verify,.pdf-chip-remove')) return;
@@ -460,6 +465,23 @@ document.querySelector('form.panel').addEventListener('submit', event => {
     // Sofort verhindern: Ein async-Handler darf erst nach dem await preventDefault() aufrufen.
     event.preventDefault();
     continueTaskSubmission(button);
+});
+
+// Statusmeldungen automatisch ausblenden: laufende Verarbeitung bleibt sichtbar.
+document.querySelectorAll('.success').forEach(message => {
+    if (message.textContent.trim() === 'Verarbeitung läuft …') return;
+    setTimeout(() => {
+        message.style.transition = 'opacity .3s ease';
+        message.style.opacity = '0';
+        setTimeout(() => message.remove(), 350);
+    }, 5000);
+});
+document.querySelectorAll('.alert').forEach(message => {
+    setTimeout(() => {
+        message.style.transition = 'opacity .3s ease';
+        message.style.opacity = '0';
+        setTimeout(() => message.remove(), 350);
+    }, 10000);
 });
 
 const visibleStampCheckbox = document.getElementById('visible_stamp');
