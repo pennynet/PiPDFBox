@@ -199,6 +199,29 @@ async function validateSelectedPdf() {
         const signingTimeLabel = signature.timestampValid === true
             ? 'Signierzeitpunkt (zeitgestempelt)'
             : 'Signierzeitpunkt (laut Signatur)';
+        // productionTime ist der im RFC-3161-Zeitstempel enthaltene Zeitpunkt.
+        // Nur bei von Sealium bestätigtem Zeitstempel als vertrauenswürdig ausgeben.
+        const timestampEntries = Array.isArray(signature.timestamps) ? signature.timestamps : [];
+        const timestampProductionTimes = timestampEntries
+            .filter(item => item && item.productionTime)
+            .map(item => item.productionTime);
+        const timestampApplicationTime = signature.timestampValid === true
+            ? (timestampProductionTimes[0] || null)
+            : null;
+        const formatFileSize = bytes => {
+            if (!Number.isFinite(bytes) || bytes < 0) return '';
+            if (bytes < 1024) return bytes + ' B';
+            const units = ['KB', 'MB', 'GB'];
+            let size = bytes / 1024;
+            let unit = units[0];
+            for (let i = 1; size >= 1024 && i < units.length; i++) {
+                size /= 1024;
+                unit = units[i];
+            }
+            return size.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + unit;
+        };
+        const heading = document.getElementById('signature-dialog-title');
+        if (heading) heading.textContent = 'Signaturprüfung – ' + file.name + ' (' + formatFileSize(file.size) + ')';
         const rows = [
             ['Datei', data.filename || file.name],
             ['Gesamtergebnis', data.valid === true ? 'Gültig' : 'Nicht gültig'],
@@ -209,6 +232,9 @@ async function validateSelectedPdf() {
             ['Zertifikat gültig', signature.certValid === true ? 'Ja' : 'Nein'],
             ['Widerrufsprüfung', signature.revocationOk === true ? 'OK' : 'Nicht bestätigt'],
             [signingTimeLabel, formatDateTime(signingTime)],
+            ['Zeitstempel der Signaturanbringung', timestampApplicationTime
+                ? formatDateTime(timestampApplicationTime)
+                : (signature.timestampValid === true ? 'Zeitpunkt nicht angegeben' : 'Kein gültiger Zeitstempel bestätigt')],
             ['Zeitstempel', signature.timestampValid === true ? 'Gültig' : 'Nicht bestätigt'],
             ['Qualifizierte Signatur', summary.hasQualifiedSignature === true ? 'Ja' : 'Nein'],
             ['Prüfzeitpunkt', data.validatedAt || 'Nicht angegeben']
