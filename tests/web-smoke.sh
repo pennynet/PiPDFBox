@@ -225,7 +225,7 @@ run_upload_and_download() {
     local upload_code download_path download_code
 
     upload_code="$(
-        curl -sS -o "$output_html" -w '%{http_code}' \
+        curl -sS -L -o "$output_html" -w '%{http_code}' \
             -c "$COOKIE_FILE" -b "$COOKIE_FILE" \
             -F "csrf=$csrf" -F "action=$operation" \
             "$@" "$BASE_URL/"
