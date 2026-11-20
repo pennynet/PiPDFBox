@@ -28,8 +28,9 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-$error = '';
-$notice = '';
+$error = (string)($_SESSION['flash_error'] ?? '');
+$notice = (string)($_SESSION['flash_notice'] ?? '');
+unset($_SESSION['flash_error'], $_SESSION['flash_notice']);
 
 function h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -120,7 +121,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=14">
+        <link rel="stylesheet" href="/assets/style.css?v=17">
     </head>
     <body>
         <main class="login">
@@ -302,6 +303,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             ? [$paths[0], $dir . '/signiert.pdf']
                             : [$op, $dir];
 
+                        if ($op === 'sign' && ($_POST['visible_stamp'] ?? '') === '1') {
+                            $args[] = '--visible-stamp';
+                        }
+
+                        if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
+                            $args[] = '--reverse-inputs';
+                        }
+
                         if ($op === 'compress') {
                             $profile = (string)($_POST['compress_profile'] ?? 'stark');
                             if (!in_array($profile, ['maximal', 'stark', 'mittel'], true)) {
@@ -402,6 +411,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
     }
+    // Post/Redirect/Get: Browser-Refresh darf keinen Auftrag erneut starten.
+    $_SESSION['flash_error'] = $error;
+    $_SESSION['flash_notice'] = $notice;
+    header('Location: /', true, 303);
+    exit;
 }
 
 $result = $_SESSION['result'] ?? null;
@@ -413,7 +427,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=14">
+    <link rel="stylesheet" href="/assets/style.css?v=17">
 </head>
 <body>
 
@@ -508,6 +522,10 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDFs zusammenführen</h3>
                     <p>Mehrere PDFs zu einer Datei verbinden.</p>
+                    <label class="option-check">
+                        <input type="checkbox" name="reverse_inputs" value="1">
+                        Reihung umkehren
+                    </label>
                     <button class="task-button" type="submit" name="action" value="merge">
                         PDFs zusammenführen
                     </button>
@@ -544,7 +562,11 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-icon">✍</div>
                 <div class="tool-content">
                     <h3>PDF signieren</h3>
-                    <p>PDF mit der D-TRUST-Signaturkarte digital signieren.</p>
+                    <p>PDF qualifiziert elektronisch signieren.</p>
+                    <label class="option-check">
+                        <input type="checkbox" name="visible_stamp" value="1">
+                        Sichtbaren Stempel anfügen
+                    </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
                     </button>

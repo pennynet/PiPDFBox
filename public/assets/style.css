@@ -208,11 +208,6 @@
 
 
 /* Untere Funktionskacheln: Überschriften und Beschreibungen auf gleiche Höhe bringen. */
-.tool-pdfa .tool-content h3,
-.tool-ocr .tool-content h3,
-.tool-qes .tool-content h3 {
-    min-height: 2.6em;
-}
 .tool-pdfa .tool-content p,
 .tool-ocr .tool-content p,
 .tool-qes .tool-content p {
@@ -274,4 +269,12 @@
 .github-link:hover { text-decoration: underline; }
 @media(max-width: 540px) {
     .header-actions { gap: 12px; }
+}
+
+
+/* PDF/A- und OCR-Kacheln: eine zusätzliche Leerzeile nach der Beschreibung,
+   damit die Auswahlfelder auf Höhe der linken Eingabefelder beginnen. */
+.tool-pdfa .tool-content p,
+.tool-ocr .tool-content p {
+    min-height: 4.2em;
 }

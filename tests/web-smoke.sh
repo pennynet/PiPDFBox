@@ -68,12 +68,18 @@ python_bin = sys.argv[6]
 index = index_path.read_text(encoding="utf-8")
 old_config = "$configFile = '/etc/pipdfbox/config.php';"
 new_config = f"$configFile = '{config_path.as_posix()}';"
-old_worker = "['/usr/bin/python3', '/opt/pipdfbox/worker.py']"
-new_worker = f"['{python_bin}', '{worker_path.as_posix()}']"
+old_script = "$script = $signing ? '/opt/pipdfbox/opensc.py' : '/opt/pipdfbox/worker.py';"
+new_script = f"$script = $signing ? '/opt/pipdfbox/opensc.py' : '{worker_path.as_posix()}';"
+old_python = "['/usr/bin/python3', $script]"
+new_python = f"[{python_bin!r}, $script]"
 
-if index.count(old_config) != 1 or index.count(old_worker) != 1:
-    raise SystemExit("Erwartete Pfadstellen in index.php sind nicht eindeutig.")
-index = index.replace(old_config, new_config).replace(old_worker, new_worker)
+if index.count(old_config) != 1 or index.count(old_script) != 1 or index.count(old_python) != 1:
+    raise SystemExit("Erwartete Konfigurations- oder Worker-Pfadstellen in index.php sind nicht eindeutig.")
+index = (
+    index.replace(old_config, new_config)
+    .replace(old_script, new_script)
+    .replace(old_python, new_python)
+)
 index_path.write_text(index, encoding="utf-8")
 
 download = download_path.read_text(encoding="utf-8")
@@ -219,7 +225,7 @@ run_upload_and_download() {
     local upload_code download_path download_code
 
     upload_code="$(
-        curl -sS -o "$output_html" -w '%{http_code}' \
+        curl -sS -L -o "$output_html" -w '%{http_code}' \
             -c "$COOKIE_FILE" -b "$COOKIE_FILE" \
             -F "csrf=$csrf" -F "action=$operation" \
             "$@" "$BASE_URL/"
