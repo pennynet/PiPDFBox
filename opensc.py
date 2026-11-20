@@ -22,6 +22,8 @@ from asn1crypto import x509 as asn1_x509
 from cryptography import x509 as crypto_x509
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+from pyhanko.pdf_utils.generic import DictionaryObject, NameObject, NullObject
+from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import fields, signers
 
 
@@ -148,6 +150,115 @@ def read_signing_certificate() -> bytes:
     return certificate_der
 
 
+def _inherited_page_value(page, key: str):
+    """Read a page attribute, following the page tree for inherited values."""
+    current = page
+    while current is not None:
+        value = current.get(key)
+        if value is not None:
+            return value.get_object() if hasattr(value, "get_object") else value
+
+        parent = current.get("/Parent")
+        if parent is None:
+            return None
+        current = parent.get_object() if hasattr(parent, "get_object") else parent
+
+    return None
+
+
+def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, float, float, float]:
+    """Append a blank page matching the last page and return a top-positioned stamp box."""
+    last_page_ref, _ = writer.prev.find_page_for_modification(-1)
+    last_page = last_page_ref.get_object()
+
+    media_box = _inherited_page_value(last_page, "/MediaBox")
+    if media_box is None or len(media_box) != 4:
+        raise OpenSCPdfSigningError(
+            "Seitengröße der letzten PDF-Seite konnte nicht ermittelt werden"
+        )
+
+    media_values = tuple(float(value) for value in media_box)
+    media_llx, media_lly, media_urx, media_ury = media_values
+    media_width = media_urx - media_llx
+    media_height = media_ury - media_lly
+    if media_width <= 0 or media_height <= 0:
+        raise OpenSCPdfSigningError("Ungültige Seitengröße der letzten PDF-Seite")
+
+    crop_box = _inherited_page_value(last_page, "/CropBox")
+    if crop_box is None:
+        crop_box = media_box
+    crop_llx, crop_lly, crop_urx, crop_ury = (
+        float(value) for value in crop_box
+    )
+    visible_width = crop_urx - crop_llx
+    visible_height = crop_ury - crop_lly
+    if visible_width <= 0 or visible_height <= 0:
+        raise OpenSCPdfSigningError("Ungültiger sichtbarer Seitenbereich der letzten PDF-Seite")
+
+    rotation = _inherited_page_value(last_page, "/Rotate")
+    rotation_degrees = int(rotation or 0) % 360
+    if rotation_degrees not in (0, 90, 180, 270):
+        raise OpenSCPdfSigningError("Nicht unterstützte Seitendrehung der letzten PDF-Seite")
+
+    pages_root = writer.prev.root["/Pages"]
+    if hasattr(pages_root, "get_object"):
+        pages_root = pages_root.get_object()
+    page_count = int(pages_root["/Count"])
+    if page_count < 1:
+        raise OpenSCPdfSigningError("Das PDF enthält keine Seiten")
+
+    new_page = PageObject(
+        contents=NullObject(),
+        media_box=writer.import_object(media_box),
+        resources=DictionaryObject(),
+    )
+    if crop_box is not media_box:
+        new_page[NameObject("/CropBox")] = writer.import_object(crop_box)
+    if rotation is not None:
+        new_page[NameObject("/Rotate")] = writer.import_object(rotation)
+
+    writer.insert_page(new_page, after=page_count - 1)
+
+    margin_x = min(48.0, visible_width * 0.08)
+    margin_y = min(48.0, visible_height * 0.08)
+    stamp_height = min(67.0, visible_height * 0.18)
+    if visible_width <= 2 * margin_x or visible_height <= 2 * margin_y + stamp_height:
+        raise OpenSCPdfSigningError(
+            "Die letzte PDF-Seite ist zu klein für den Signaturstempel"
+        )
+
+    if rotation_degrees == 0:
+        box = (
+            crop_llx + margin_x,
+            crop_ury - margin_y - stamp_height,
+            crop_urx - margin_x,
+            crop_ury - margin_y,
+        )
+    elif rotation_degrees == 90:
+        box = (
+            crop_llx + margin_x,
+            crop_lly + margin_y,
+            crop_llx + margin_x + stamp_height,
+            crop_ury - margin_y,
+        )
+    elif rotation_degrees == 180:
+        box = (
+            crop_llx + margin_x,
+            crop_lly + margin_y,
+            crop_urx - margin_x,
+            crop_lly + margin_y + stamp_height,
+        )
+    else:
+        box = (
+            crop_urx - margin_x - stamp_height,
+            crop_lly + margin_y,
+            crop_urx - margin_x,
+            crop_ury - margin_y,
+        )
+
+    return box
+
+
 class OpenSCPdfSigner:
     """Create a PDF signature using the D-TRUST certificate and OpenSC."""
 
@@ -167,7 +278,9 @@ class OpenSCPdfSigner:
                 "Das D-TRUST-Zertifikat enthält keinen gültigen RSA-Schlüssel"
             ) from exc
 
-    def sign_pdf(self, input_pdf: Path, output_pdf: Path) -> Path:
+    def sign_pdf(
+        self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False
+    ) -> Path:
         if not input_pdf.is_file():
             raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
         if input_pdf.resolve() == output_pdf.resolve():
@@ -188,20 +301,26 @@ class OpenSCPdfSigner:
             self._certificate,
             self._signature_size,
         )
-        pdf_signer = signers.PdfSigner(
-            metadata,
-            external_signer,
-            new_field_spec=fields.SigFieldSpec(
-                sig_field_name="Signature1",
-                on_page=0,
-                box=(48, 48, 547, 115),
-            ),
-        )
-
         created_output = False
         try:
             with input_pdf.open("rb") as source:
                 writer = IncrementalPdfFileWriter(source, strict=False)
+                if visible_stamp:
+                    signature_box = _append_signature_page(writer)
+                    field_spec = fields.SigFieldSpec(
+                        sig_field_name="Signature1",
+                        on_page=-1,
+                        box=signature_box,
+                    )
+                else:
+                    # Die digitale Signatur bleibt gültig, erhält aber keinen sichtbaren Stempel.
+                    field_spec = fields.SigFieldSpec(sig_field_name="Signature1")
+
+                pdf_signer = signers.PdfSigner(
+                    metadata,
+                    external_signer,
+                    new_field_spec=field_spec,
+                )
                 with output_pdf.open("xb") as destination:
                     created_output = True
                     pdf_signer.sign_pdf(writer, output=destination)
@@ -219,12 +338,18 @@ class OpenSCPdfSigner:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
-        print("Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf", file=sys.stderr)
+    if len(sys.argv) not in (3, 4) or (
+        len(sys.argv) == 4 and sys.argv[3] != "--visible-stamp"
+    ):
+        print(
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp]",
+            file=sys.stderr,
+        )
         return 2
 
     input_pdf = Path(sys.argv[1]).resolve()
     output_pdf = Path(sys.argv[2]).resolve()
+    visible_stamp = len(sys.argv) == 4
 
     try:
         if not input_pdf.is_file():
@@ -233,7 +358,9 @@ def main() -> int:
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
-        signed_pdf = signer.sign_pdf(input_pdf, output_pdf)
+        signed_pdf = signer.sign_pdf(
+            input_pdf, output_pdf, visible_stamp=visible_stamp
+        )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
         return 1
