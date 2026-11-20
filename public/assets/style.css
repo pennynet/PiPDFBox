@@ -389,3 +389,42 @@
 .signature-status.bad,.signature-error { color:#a83228; }
 .signature-warning { margin:16px 0 0; padding:12px; border-radius:8px; background:#fff7e6; color:#805b16; font-size:13px; }
 @media(max-width:540px) { .signature-result { margin:16px 17px; } .signature-result dl { grid-template-columns:1fr; gap:3px; } .signature-result dd { margin-bottom:9px; } .header-actions { gap:10px; } .signature-check-link,.help-link,.logout { font-size:12px; } }
+
+
+/* Signatur-Prüfbericht als zentriertes Popup */
+.signature-report-dialog {
+    width:min(620px, calc(100% - 28px));
+    max-width:620px;
+    max-height:min(85vh, 820px);
+    padding:0;
+    overflow:auto;
+}
+.signature-report-dialog::backdrop { background:#0f172a99; }
+.signature-dialog-body { padding:24px; }
+.signature-dialog-body h2 { margin:0 0 18px; font-size:21px; }
+.signature-report-dialog #signature-result { margin:0; }
+.signature-report-dialog #signature-result dl {
+    display:grid;
+    grid-template-columns:minmax(150px, 210px) 1fr;
+    gap:9px 16px;
+    margin:18px 0 0;
+    font-size:14px;
+}
+.signature-report-dialog #signature-result dt { color:#64748b; }
+.signature-report-dialog #signature-result dd { margin:0; font-weight:650; overflow-wrap:anywhere; }
+.signature-report-dialog .signature-status { margin:0; font-size:16px; }
+.signature-report-dialog .signature-warning { margin-top:18px; }
+.signature-report-dialog .dialog-actions { position:sticky; bottom:0; padding-top:16px; background:#fff; }
+.signature-error { color:#a83228; font-weight:600; }
+@media print {
+    body * { visibility:hidden !important; }
+    #signature-dialog, #signature-dialog * { visibility:visible !important; }
+    #signature-dialog { position:absolute; inset:0; width:100%; max-width:none; max-height:none; border:0; box-shadow:none; }
+    #signature-dialog::backdrop { display:none; }
+    #signature-dialog .dialog-actions { display:none; }
+}
+@media(max-width:540px) {
+    .signature-dialog-body { padding:18px; }
+    .signature-report-dialog #signature-result dl { grid-template-columns:1fr; gap:3px; }
+    .signature-report-dialog #signature-result dd { margin-bottom:9px; }
+}
