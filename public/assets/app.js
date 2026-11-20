@@ -9,6 +9,46 @@ let viewerUrl = null;
 let draggedIndex = null;
 let selectedFiles = [];
 
+let pointerDrag = null;
+let suppressChipClick = false;
+
+document.addEventListener('pointermove', event => {
+    if (!pointerDrag) return;
+    const dx = event.clientX - pointerDrag.startX;
+    const dy = event.clientY - pointerDrag.startY;
+    if (!pointerDrag.active && Math.hypot(dx, dy) < 6) return;
+    pointerDrag.active = true;
+    suppressChipClick = true;
+    pointerDrag.chip.classList.add('dragging');
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.pdf-chip:not(.pdf-chip-result)');
+    if (!target || target === pointerDrag.chip || !list.contains(target)) return;
+    const rect = target.getBoundingClientRect();
+    const after = event.clientY > rect.top + rect.height / 2
+        || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 2 && event.clientX > rect.left + rect.width / 2);
+    if (after) {
+        if (target.nextElementSibling !== pointerDrag.chip) list.insertBefore(pointerDrag.chip, target.nextElementSibling);
+    } else if (target !== pointerDrag.chip.nextElementSibling) {
+        list.insertBefore(pointerDrag.chip, target);
+    }
+});
+
+document.addEventListener('pointerup', () => {
+    if (!pointerDrag) return;
+    const wasDragging = pointerDrag.active;
+    pointerDrag.chip.classList.remove('dragging');
+    if (wasDragging) {
+        const original = currentFiles();
+        const order = [...list.querySelectorAll('.pdf-chip:not(.pdf-chip-result)')].map(item => Number(item.dataset.index));
+        if (order.length === original.length && order.every(Number.isInteger)) {
+            setFiles(order.map(i => original[i]));
+        } else {
+            renderFiles();
+        }
+        setTimeout(() => { suppressChipClick = false; }, 0);
+    }
+    pointerDrag = null;
+});
+
 function currentFiles() { return [...selectedFiles]; }
 function setFiles(files) {
     selectedFiles = [...files];
@@ -30,7 +70,6 @@ function renderFiles() {
     files.forEach((file, index) => {
         const chip = document.createElement('div');
         chip.className = 'pdf-chip';
-        chip.draggable = true;
         chip.dataset.index = String(index);
         const open = document.createElement('button');
         open.type = 'button';
@@ -43,7 +82,10 @@ function renderFiles() {
         name.className = 'pdf-chip-name';
         name.textContent = file.name;
         open.append(icon, name);
-        open.addEventListener('click', () => openPdf(file));
+        open.addEventListener('click', () => {
+            if (suppressChipClick) return;
+            openPdf(file);
+        });
         open.addEventListener('contextmenu', event => {
             event.preventDefault();
             validateSelectedPdf(file);
@@ -63,44 +105,11 @@ function renderFiles() {
         remove.setAttribute('aria-label', file.name + ' entfernen');
         remove.addEventListener('click', () => setFiles(currentFiles().filter((_, i) => i !== index)));
         chip.append(open, verify, remove);
-        chip.addEventListener('dragstart', event => {
-            draggedIndex = index;
-            event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/plain', String(index));
-            event.dataTransfer.setDragImage(chip, Math.min(event.offsetX, chip.offsetWidth), Math.min(event.offsetY, chip.offsetHeight));
-            chip.classList.add('dragging');
-        });
-        chip.addEventListener('dragend', () => {
-            const dragged = list.querySelector('.pdf-chip.dragging');
-            if (dragged) dragged.classList.remove('dragging');
-            draggedIndex = null;
-            list.querySelectorAll('.pdf-chip').forEach(item => item.classList.remove('drag-over'));
-        });
-        chip.addEventListener('dragover', event => {
-            if (draggedIndex === null || draggedIndex === index) return;
-            event.preventDefault();
-            const rect = chip.getBoundingClientRect();
-            const insertAfter = event.clientX > rect.left + rect.width / 2;
-            const moving = list.querySelector('.pdf-chip.dragging');
-            if (!moving || moving === chip) return;
-            if (insertAfter) {
-                if (chip.nextElementSibling !== moving) list.insertBefore(moving, chip.nextElementSibling);
-            } else if (chip !== moving.nextElementSibling) {
-                list.insertBefore(moving, chip);
-            }
-            chip.classList.add('drag-over');
-        });
-        chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
-        chip.addEventListener('drop', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            const order = [...list.querySelectorAll('.pdf-chip:not(.pdf-chip-result)')]
-                .map(item => Number(item.dataset.index));
-            const files = currentFiles();
-            if (order.length === files.length && order.every(Number.isInteger)) {
-                setFiles(order.map(originalIndex => files[originalIndex]));
-            }
-            draggedIndex = null;
+
+        // Zuverlässiges Maus-Verschieben per Pointer Events statt HTML5-Drag-and-drop.
+        chip.addEventListener('pointerdown', event => {
+            if (event.pointerType !== 'mouse' || event.button !== 0 || event.target.closest('.pdf-chip-verify,.pdf-chip-remove')) return;
+            pointerDrag = {chip, startX:event.clientX, startY:event.clientY, active:false};
         });
         list.appendChild(chip);
     });
