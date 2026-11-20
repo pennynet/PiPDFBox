@@ -516,8 +516,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
 
                             if (
+                                !$error &&
                                 $out !== '' &&
-                                $base === $out &&
+                                $base === basename($base) &&
                                 is_file($dir . '/' . $base)
                             ) {
                                 $_SESSION['result'] = [
