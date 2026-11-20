@@ -41,6 +41,15 @@ if (is_file($tsaSettingsFile)) {
 }
 $selectedTsaUrl = (string)$tsaSettings['servers'][$tsaSettings['selected']]['url'];
 
+$filenameSettingsFile = rtrim($dataDir, '/') . '/filename-settings.json';
+$filenameMode = 'current';
+if (is_file($filenameSettingsFile)) {
+    $storedFilenameSettings = json_decode((string)file_get_contents($filenameSettingsFile), true);
+    if (is_array($storedFilenameSettings) && in_array(($storedFilenameSettings['mode'] ?? ''), ['current', 'action', 'date'], true)) {
+        $filenameMode = $storedFilenameSettings['mode'];
+    }
+}
+
 if (!isset($_SESSION['csrf'])) {
     $_SESSION['csrf'] = bin2hex(random_bytes(32));
 }
@@ -220,6 +229,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
                 } else {
                     $_SESSION['flash_notice'] = 'Zeitserver-Einstellungen gespeichert.';
                 }
+            }
+        }
+    }
+    header('Location: /', true, 303);
+    exit;
+}
+
+/* Dateinamen-Einstellungen */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_filename_settings') {
+    if (!hash_equals($_SESSION['csrf'], (string)($_POST['csrf'] ?? ''))) {
+        $_SESSION['flash_error'] = 'Sitzung abgelaufen. Bitte Seite neu laden.';
+    } else {
+        $choice = (string)($_POST['filename_mode'] ?? 'current');
+        if (!in_array($choice, ['current', 'action', 'date'], true)) {
+            $_SESSION['flash_error'] = 'Ungültige Dateinamen-Einstellung.';
+        } else {
+            $json = json_encode(['mode' => $choice], JSON_PRETTY_PRINT);
+            $tmp = $filenameSettingsFile . '.tmp';
+            if ($json === false || file_put_contents($tmp, $json, LOCK_EX) === false || !rename($tmp, $filenameSettingsFile)) {
+                @unlink($tmp);
+                $_SESSION['flash_error'] = 'Dateinamen-Einstellungen konnten nicht gespeichert werden.';
+            } else {
+                $_SESSION['flash_notice'] = 'Dateinamen-Einstellungen gespeichert.';
+                $filenameMode = $choice;
             }
         }
     }
@@ -457,6 +490,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                             $out = trim($workerOutput);
                             $base = basename($out);
+                            if ($filenameMode !== 'current' && $out !== '' && $base === $out && is_file($dir . '/' . $base)) {
+                                $originalName = basename((string)($files['name'][array_key_first($valid)] ?? 'dokument.pdf'));
+                                $originalStem = pathinfo($originalName, PATHINFO_FILENAME);
+                                $extension = pathinfo($base, PATHINFO_EXTENSION);
+                                $safeStem = preg_replace('/[^\\p{L}\\p{N}._-]+/u', '-', $originalStem) ?? 'dokument';
+                                $safeStem = trim($safeStem, '.-_');
+                                if ($safeStem === '') $safeStem = 'dokument';
+                                $actionNames = [
+                                    'merge' => 'zusammengefuehrt', 'split' => 'aufgeteilt',
+                                    'interleave' => 'vorder-rueckseiten', 'compress' => 'komprimiert',
+                                    'number' => 'nummeriert', 'pdfa' => 'archiv', 'ocr' => 'durchsuchbar',
+                                    'sign' => 'signiert'
+                                ];
+                                if ($filenameMode === 'action') {
+                                    $newBase = $safeStem . '-' . ($actionNames[$op] ?? $op) . ($extension !== '' ? '.' . $extension : '');
+                                } else {
+                                    $newBase = date('ymd') . '-' . $safeStem . ($extension !== '' ? '.' . $extension : '');
+                                }
+                                if (!rename($dir . '/' . $base, $dir . '/' . $newBase)) {
+                                    $error = 'Ausgabedatei konnte nicht umbenannt werden.';
+                                } else {
+                                    $base = $newBase;
+                                }
+                            }
 
                             if (
                                 $out !== '' &&
@@ -533,6 +590,7 @@ $result = $_SESSION['result'] ?? null;
         <h3 id="settings-menu-title">Einstellungen</h3>
         <button type="button" class="settings-menu-option" id="open-tsa-settings">Zeitstempelserver konfigurieren</button>
         <button type="button" class="settings-menu-option" id="open-sealium-settings">Sealium API konfigurieren</button>
+        <button type="button" class="settings-menu-option" id="open-filename-settings">Dateinamen</button>
         <div class="dialog-actions"><button type="button" class="dialog-cancel" id="settings-menu-close">Schließen</button></div>
     </div>
 </dialog>
@@ -814,13 +872,28 @@ $result = $_SESSION['result'] ?? null;
             </form>
         </dialog>
 
+        <dialog id="filename-dialog" class="settings-dialog" aria-labelledby="filename-dialog-title">
+            <form method="post">
+                <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
+                <input type="hidden" name="action" value="save_filename_settings">
+                <h3 id="filename-dialog-title">Dateinamen</h3>
+                <label><input type="radio" name="filename_mode" value="current" <?= $filenameMode === 'current' ? 'checked' : '' ?>> Bisherige Dateinamen verwenden</label>
+                <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>> Originalname + Aktion (z. B. test-nummeriert.pdf)</label>
+                <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>> Datum + Originalname (z. B. 261120-test.pdf, YYMMDD)</label>
+                <div class="dialog-actions">
+                    <button type="button" class="dialog-cancel" id="filename-dialog-cancel">Abbrechen</button>
+                    <button type="submit" class="primary">Speichern</button>
+                </div>
+            </form>
+        </dialog>
+
     <footer>
         PiPDFBox · Raspberry Pi · Dateien werden automatisch nach 24 Stunden gelöscht.
     </footer>
 
 </main>
 
-<script src="/assets/app.js?v=33"></script>
+<script src="/assets/app.js?v=34"></script>
 
 </body>
 </html>
