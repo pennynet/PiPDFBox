@@ -339,39 +339,28 @@ Q
         margins=Margins.uniform(0),
     )
 
-    first_line_style = replace(
+    stamp_style = replace(
         DEFAULT_SIGNING_STAMP_STYLE,
         background=None,
         border_width=0,
-        stamp_text="qualifiziert elektronisch signiert von %(signer)s",
+        stamp_text=(
+            "qualifiziert elektronisch signiert von %(signer)s "
+            "am %(ts)s"
+        ),
         inner_content_layout=left_layout,
     )
-    first_line = first_line_style.create_stamp(
+    stamp = stamp_style.create_stamp(
         writer,
         BoxConstraints(width=text_width, height=20),
-        {"signer": signer_name or "D-TRUST"},
+        {
+            "signer": signer_name or "D-TRUST",
+            "ts": timestamp,
+        },
     )
-    first_line.apply(
+    stamp.apply(
         dest_page=page_index,
         x=text_x,
-        y=lly + stamp_height * 0.57,
-        coords=CoordinateSystem.PAGE_DEFAULT,
-    )
-
-    second_line_style = replace(
-        first_line_style,
-        stamp_text="am %(ts)s",
-        inner_content_layout=centered_layout,
-    )
-    second_line = second_line_style.create_stamp(
-        writer,
-        BoxConstraints(width=text_width, height=20),
-        {"ts": timestamp},
-    )
-    second_line.apply(
-        dest_page=page_index,
-        x=text_x,
-        y=lly + stamp_height * 0.18,
+        y=lly + stamp_height * 0.5,
         coords=CoordinateSystem.PAGE_DEFAULT,
     )
 
