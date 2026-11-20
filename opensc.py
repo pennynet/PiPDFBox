@@ -8,6 +8,7 @@ by this program.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 import subprocess
 import sys
 import tempfile
@@ -276,7 +277,12 @@ def _apply_signature_stamp(
 ) -> None:
     """Draw the standard pyHanko signature stamp into page content, not a widget."""
     llx, lly, urx, ury = box
-    stamp = DEFAULT_SIGNING_STAMP_STYLE.create_stamp(
+    stamp_style = replace(
+        DEFAULT_SIGNING_STAMP_STYLE,
+        stamp_text="qualifiziert elektronisch signiert von %(signer)s um: %(ts)s",
+        timestamp_format="%d.%m.%Y",
+    )
+    stamp = stamp_style.create_stamp(
         writer,
         BoxConstraints(width=urx - llx, height=ury - lly),
         {"signer": signer_name or "D-TRUST"},
