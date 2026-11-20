@@ -227,11 +227,18 @@ def main() -> int:
     output_pdf = Path(sys.argv[2]).resolve()
 
     try:
+        if not input_pdf.is_file():
+            raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
+        if output_pdf.exists():
+            raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
         signed_pdf = signer.sign_pdf(input_pdf, output_pdf)
-    except Exception as exc:
+    except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
+        return 1
+    except Exception:
+        print("PDF-Signierung fehlgeschlagen", file=sys.stderr)
         return 1
 
     print(signed_pdf.name)
