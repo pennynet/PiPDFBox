@@ -278,3 +278,57 @@
 .tool-ocr .tool-content p {
     min-height: 4.2em;
 }
+
+
+.inline-settings-link {
+    color: #2459a6;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.inline-settings-link:hover { color: #194987; }
+.settings-dialog {
+    width: min(440px, calc(100% - 32px));
+    max-width: 440px;
+    border: 1px solid #dbe3ed;
+    border-radius: 14px;
+    padding: 22px;
+    color: #1e293b;
+    box-shadow: 0 18px 55px #0f172a33;
+}
+.settings-dialog::backdrop { background: #0f172a88; }
+.settings-dialog h3 { margin: 0 0 18px; font-size: 18px; }
+.settings-dialog label {
+    display: block;
+    margin: 14px 0 7px;
+    font-size: 13px;
+    font-weight: 650;
+}
+.settings-dialog select,
+.settings-dialog input[type="text"],
+.settings-dialog input[type="url"] {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    border: 1px solid #ccd6e2;
+    border-radius: 8px;
+    background: #fff;
+    color: #26364a;
+    font: inherit;
+    font-size: 14px;
+}
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+}
+.dialog-cancel {
+    border: 1px solid #ccd6e2;
+    border-radius: 9px;
+    padding: 11px 15px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    cursor: pointer;
+}
+#tsa-new-fields[hidden] { display: none; }
