@@ -8,7 +8,6 @@ by this program.
 from __future__ import annotations
 
 import asyncio
-import re
 import subprocess
 import sys
 import tempfile
@@ -29,6 +28,8 @@ from pyhanko.sign import fields, signers
 OPENSC_PREFIX = Path("/opt/opensc-0.27.1")
 PKCS11_MODULE = OPENSC_PREFIX / "lib/opensc-pkcs11.so"
 PKCS11_TOOL = OPENSC_PREFIX / "bin/pkcs11-tool"
+SLOT_ID = 1
+SIGNING_KEY_ID = bytes.fromhex("02")
 
 
 class OpenSCPdfSigningError(RuntimeError):
@@ -40,13 +41,9 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
         self,
         certificate: asn1_x509.Certificate,
         signature_size: int,
-        slot_id: str,
-        key_id: str,
     ) -> None:
         super().__init__(signing_cert=certificate, cert_registry=None)
         self._signature_size = signature_size
-        self._slot_id = slot_id
-        self._key_id = key_id
 
     async def async_sign_raw(
         self,
@@ -68,11 +65,11 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
             command = [
                 str(PKCS11_TOOL),
                 "--module", str(PKCS11_MODULE),
-                "--slot", self._slot_id,
+                "--slot", str(SLOT_ID),
                 "--login",
                 "--sign",
                 "--mechanism", "SHA256-RSA-PKCS",
-                "--id", self._key_id,
+                "--id", SIGNING_KEY_ID.hex(),
                 "--input-file", str(input_file),
                 "--output-file", str(output_file),
             ]
@@ -116,72 +113,45 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
             return signature
 
 
-def _run_pkcs11(arguments: list[str], timeout: int = 30) -> str:
-    command = [str(PKCS11_TOOL), "--module", str(PKCS11_MODULE), *arguments]
-    try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=timeout)
-    except (OSError, subprocess.SubprocessError):
-        raise OpenSCPdfSigningError("OpenSC konnte die Kartenobjekte nicht ermitteln") from None
-    return result.stdout
-
-
-def _object_ids(slot_id: str, object_type: str) -> set[str]:
-    output = _run_pkcs11(["--slot", slot_id, "--list-objects", "--type", object_type])
-    return {
-        match.group(1).lower()
-        for match in re.finditer(r"(?im)^\s*ID:\s*([0-9a-f]+)\s*$", output)
-    }
-
-
-def discover_signing_certificate() -> tuple[bytes, str, str]:
-    """Find the single RSA certificate that has a matching private key."""
+def read_signing_certificate() -> bytes:
+    """Read the public signing certificate without logging token metadata."""
     if not PKCS11_MODULE.is_file() or not PKCS11_TOOL.is_file():
         raise OpenSCPdfSigningError("OpenSC 0.27.1 ist nicht vollständig installiert")
 
-    slots_output = _run_pkcs11(["--list-token-slots"])
-    slot_ids = re.findall(r"(?im)^Slot\s+\d+\s+\((0x[0-9a-f]+)\):", slots_output)
-    if not slot_ids:
-        raise OpenSCPdfSigningError("Keine Chipkarte mit PKCS#11-Token gefunden")
-
-    candidates: list[tuple[bytes, str, str]] = []
     with tempfile.TemporaryDirectory(prefix="pipdfbox-cert-") as tmp:
-        for slot_id in slot_ids:
-            certificate_ids = _object_ids(slot_id, "cert")
-            private_key_ids = _object_ids(slot_id, "privkey")
-            for key_id in sorted(certificate_ids & private_key_ids):
-                certificate_file = Path(tmp) / f"certificate-{slot_id}-{key_id}.der"
-                try:
-                    subprocess.run(
-                        [
-                            str(PKCS11_TOOL), "--module", str(PKCS11_MODULE),
-                            "--slot", slot_id, "--read-object", "--type", "cert",
-                            "--id", key_id, "--output-file", str(certificate_file),
-                        ],
-                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                        timeout=30,
-                    )
-                    certificate_der = certificate_file.read_bytes()
-                    certificate = crypto_x509.load_der_x509_certificate(certificate_der)
-                except (OSError, ValueError, subprocess.SubprocessError):
-                    continue
-                if isinstance(certificate.public_key(), rsa.RSAPublicKey):
-                    candidates.append((certificate_der, slot_id, key_id))
+        certificate_file = Path(tmp) / "signing-certificate.der"
+        command = [
+            str(PKCS11_TOOL),
+            "--module", str(PKCS11_MODULE),
+            "--slot", str(SLOT_ID),
+            "--read-object",
+            "--type", "cert",
+            "--id", SIGNING_KEY_ID.hex(),
+            "--output-file", str(certificate_file),
+        ]
+        try:
+            subprocess.run(
+                command,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=30,
+            )
+            certificate_der = certificate_file.read_bytes()
+        except (OSError, subprocess.SubprocessError):
+            raise OpenSCPdfSigningError(
+                "D-TRUST-Signaturzertifikat konnte nicht von der Karte gelesen werden"
+            ) from None
 
-    if not candidates:
-        raise OpenSCPdfSigningError(
-            "Kein passendes RSA-Signaturzertifikat mit privatem Schlüssel gefunden"
-        )
-    if len(candidates) != 1:
-        raise OpenSCPdfSigningError(
-            "Mehrere passende RSA-Zertifikate gefunden; Karte nicht eindeutig"
-        )
-    return candidates[0]
+    if not certificate_der:
+        raise OpenSCPdfSigningError("Das Signaturzertifikat ist leer")
+    return certificate_der
 
 
 class OpenSCPdfSigner:
     """Create a PDF signature using the D-TRUST certificate and OpenSC."""
 
-    def __init__(self, certificate_der: bytes, slot_id: str, key_id: str) -> None:
+    def __init__(self, certificate_der: bytes) -> None:
         try:
             crypto_certificate = crypto_x509.load_der_x509_certificate(
                 certificate_der
@@ -192,8 +162,6 @@ class OpenSCPdfSigner:
 
             self._certificate = asn1_x509.Certificate.load(certificate_der)
             self._signature_size = (public_key.key_size + 7) // 8
-        self._slot_id = slot_id
-        self._key_id = key_id
         except Exception as exc:
             raise OpenSCPdfSigningError(
                 "Das D-TRUST-Zertifikat enthält keinen gültigen RSA-Schlüssel"
@@ -219,8 +187,6 @@ class OpenSCPdfSigner:
         external_signer = _OpenSCExternalSigner(
             self._certificate,
             self._signature_size,
-            self._slot_id,
-            self._key_id,
         )
         pdf_signer = signers.PdfSigner(
             metadata,
@@ -265,8 +231,8 @@ def main() -> int:
             raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
-        certificate_der, slot_id, key_id = discover_signing_certificate()
-        signer = OpenSCPdfSigner(certificate_der, slot_id, key_id)
+        certificate_der = read_signing_certificate()
+        signer = OpenSCPdfSigner(certificate_der)
         signed_pdf = signer.sign_pdf(input_pdf, output_pdf)
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
