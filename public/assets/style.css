@@ -332,3 +332,11 @@
     cursor: pointer;
 }
 #tsa-new-fields[hidden] { display: none; }
+
+
+/* Checkbox-Zeilen der oberen Funktionskacheln an der rechten Kachel ausrichten. */
+.tool-merge .tool-content p,
+.tool-interleave .tool-content p,
+.tool-qes .tool-content p {
+    min-height: 2.8em;
+}
