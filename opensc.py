@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import subprocess
 import sys
 import tempfile
