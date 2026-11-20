@@ -23,8 +23,11 @@ from cryptography import x509 as crypto_x509
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.pdf_utils.generic import DictionaryObject, NameObject, StreamObject
+from pyhanko.pdf_utils.layout import BoxConstraints
 from pyhanko.pdf_utils.writer import PageObject
-from pyhanko.sign import fields, signers
+from pyhanko.sign import signers
+from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
+from pyhanko.stamp.appearances import CoordinateSystem
 
 
 OPENSC_PREFIX = Path("/opt/opensc-0.27.1")
@@ -166,7 +169,9 @@ def _inherited_page_value(page, key: str):
     return None
 
 
-def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, float, float, float]:
+def _append_signature_page(
+    writer: IncrementalPdfFileWriter,
+) -> tuple[int, tuple[float, float, float, float]]:
     """Append a blank page matching the last page and return a top-positioned stamp box."""
     last_page_ref, _ = writer.prev.find_page_for_modification(-1)
     last_page = last_page_ref.get_object()
@@ -177,11 +182,10 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
             "Seitengröße der letzten PDF-Seite konnte nicht ermittelt werden"
         )
 
-    media_values = tuple(float(value) for value in media_box)
-    media_llx, media_lly, media_urx, media_ury = media_values
-    media_width = media_urx - media_llx
-    media_height = media_ury - media_lly
-    if media_width <= 0 or media_height <= 0:
+    media_llx, media_lly, media_urx, media_ury = (
+        float(value) for value in media_box
+    )
+    if media_urx <= media_llx or media_ury <= media_lly:
         raise OpenSCPdfSigningError("Ungültige Seitengröße der letzten PDF-Seite")
 
     crop_box = _inherited_page_value(last_page, "/CropBox")
@@ -193,12 +197,16 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
     visible_width = crop_urx - crop_llx
     visible_height = crop_ury - crop_lly
     if visible_width <= 0 or visible_height <= 0:
-        raise OpenSCPdfSigningError("Ungültiger sichtbarer Seitenbereich der letzten PDF-Seite")
+        raise OpenSCPdfSigningError(
+            "Ungültiger sichtbarer Seitenbereich der letzten PDF-Seite"
+        )
 
     rotation = _inherited_page_value(last_page, "/Rotate")
     rotation_degrees = int(rotation or 0) % 360
     if rotation_degrees not in (0, 90, 180, 270):
-        raise OpenSCPdfSigningError("Nicht unterstützte Seitendrehung der letzten PDF-Seite")
+        raise OpenSCPdfSigningError(
+            "Nicht unterstützte Seitendrehung der letzten PDF-Seite"
+        )
 
     pages_root = writer.prev.root["/Pages"]
     if hasattr(pages_root, "get_object"):
@@ -221,8 +229,9 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
 
     margin_x = min(48.0, visible_width * 0.08)
     margin_y = min(48.0, visible_height * 0.08)
-    stamp_height = min(67.0, visible_height * 0.18)
-    if visible_width <= 2 * margin_x or visible_height <= 2 * margin_y + stamp_height:
+    stamp_width = min(499.0, visible_width - 2 * margin_x)
+    stamp_height = min(67.0, visible_height - 2 * margin_y)
+    if stamp_width <= 0 or stamp_height <= 0:
         raise OpenSCPdfSigningError(
             "Die letzte PDF-Seite ist zu klein für den Signaturstempel"
         )
@@ -231,7 +240,7 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
         box = (
             crop_llx + margin_x,
             crop_ury - margin_y - stamp_height,
-            crop_urx - margin_x,
+            crop_llx + margin_x + stamp_width,
             crop_ury - margin_y,
         )
     elif rotation_degrees == 90:
@@ -239,11 +248,11 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
             crop_llx + margin_x,
             crop_lly + margin_y,
             crop_llx + margin_x + stamp_height,
-            crop_ury - margin_y,
+            crop_lly + margin_y + stamp_width,
         )
     elif rotation_degrees == 180:
         box = (
-            crop_llx + margin_x,
+            crop_urx - margin_x - stamp_width,
             crop_lly + margin_y,
             crop_urx - margin_x,
             crop_lly + margin_y + stamp_height,
@@ -251,12 +260,33 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
     else:
         box = (
             crop_urx - margin_x - stamp_height,
-            crop_lly + margin_y,
+            crop_ury - margin_y - stamp_width,
             crop_urx - margin_x,
             crop_ury - margin_y,
         )
 
-    return box
+    return page_count, box
+
+
+def _apply_signature_stamp(
+    writer: IncrementalPdfFileWriter,
+    page_index: int,
+    box: tuple[float, float, float, float],
+    signer_name: str | None,
+) -> None:
+    """Draw the standard pyHanko signature stamp into page content, not a widget."""
+    llx, lly, urx, ury = box
+    stamp = DEFAULT_SIGNING_STAMP_STYLE.create_stamp(
+        writer,
+        BoxConstraints(width=urx - llx, height=ury - lly),
+        {"signer": signer_name or "D-TRUST"},
+    )
+    stamp.apply(
+        dest_page=page_index,
+        x=llx,
+        y=lly,
+        coords=CoordinateSystem.PAGE_DEFAULT,
+    )
 
 
 class OpenSCPdfSigner:
@@ -306,21 +336,17 @@ class OpenSCPdfSigner:
             with input_pdf.open("rb") as source:
                 writer = IncrementalPdfFileWriter(source, strict=False)
                 if visible_stamp:
-                    signature_box = _append_signature_page(writer)
-                    field_spec = fields.SigFieldSpec(
-                        sig_field_name="Signature1",
-                        on_page=-1,
-                        box=signature_box,
+                    stamp_page, stamp_box = _append_signature_page(writer)
+                    _apply_signature_stamp(
+                        writer,
+                        stamp_page,
+                        stamp_box,
+                        external_signer.subject_name,
                     )
-                else:
-                    # Die digitale Signatur bleibt gültig, erhält aber keinen sichtbaren Stempel.
-                    field_spec = fields.SigFieldSpec(sig_field_name="Signature1")
 
-                pdf_signer = signers.PdfSigner(
-                    metadata,
-                    external_signer,
-                    new_field_spec=field_spec,
-                )
+                # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
+                # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
+                pdf_signer = signers.PdfSigner(metadata, external_signer)
                 with output_pdf.open("xb") as destination:
                     created_output = True
                     pdf_signer.sign_pdf(writer, output=destination)
