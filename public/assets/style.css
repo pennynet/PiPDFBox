@@ -208,10 +208,6 @@
 
 
 /* Untere Funktionskacheln: Überschriften und Beschreibungen auf gleiche Höhe bringen. */
-.tool-pdfa .tool-content h3,
-.tool-ocr .tool-content h3 {
-    min-height: 2.6em;
-}
 .tool-pdfa .tool-content p,
 .tool-ocr .tool-content p,
 .tool-qes .tool-content p {
