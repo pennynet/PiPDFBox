@@ -20,7 +20,7 @@ if (!hash_equals((string)($_SESSION['csrf'] ?? ''), (string)($_POST['csrf'] ?? '
     respond(403, ['error' => 'Sitzung abgelaufen. Bitte Seite neu laden.']);
 }
 $key = trim((string)($_POST['api_key'] ?? ''));
-if (!preg_match('/^[A-Za-z0-9._~-]{20,512}$/D', $key)) {
+if (!preg_match('/^[A-Za-z0-9._~+\/-=]{20,512}$/D', $key)) {
     respond(400, ['error' => 'Der API-Schlüssel hat ein ungültiges Format. Bitte den vollständigen Schlüssel prüfen.']);
 }
 if (!function_exists('proc_open')) respond(503, ['error' => 'Die Serverkonfiguration erlaubt das sichere Speichern nicht (proc_open).']);
