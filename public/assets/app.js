@@ -106,7 +106,7 @@ function renderFiles() {
         name.className = 'pdf-chip-name';
         name.textContent = list.dataset.resultName;
         open.append(icon, name);
-        open.addEventListener('click', () => openPdf(list.dataset.resultUrl, list.dataset.resultName));
+        open.addEventListener('click', () => openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName));
         const download = document.createElement('a');
         download.className = 'pdf-chip-download';
         download.href = list.dataset.resultUrl;
