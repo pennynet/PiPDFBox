@@ -626,6 +626,17 @@ $result = $_SESSION['result'] ?? null;
     </form>
 </dialog>
 
+<dialog id="signed-pdf-warning-dialog" class="settings-dialog" aria-labelledby="signed-pdf-warning-title">
+    <div>
+        <h3 id="signed-pdf-warning-title">Signierte PDF weiterverarbeiten</h3>
+        <p>Bei der Weiterverarbeitung wird die Signatur ungültig!</p>
+        <div class="dialog-actions">
+            <button type="button" class="dialog-cancel" id="signed-pdf-warning-cancel">Abbrechen</button>
+            <button type="button" class="primary" id="signed-pdf-warning-confirm">OK</button>
+        </div>
+    </div>
+</dialog>
+
 <dialog id="sign-limit-dialog" class="settings-dialog" aria-labelledby="sign-limit-title">
     <div>
         <h3 id="sign-limit-title">PDF signieren</h3>
@@ -923,7 +934,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=40"></script>
+<script src="/assets/app.js?v=41"></script>
 
 </body>
 </html>
