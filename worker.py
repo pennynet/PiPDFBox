@@ -64,6 +64,7 @@ def main():
     if len(sys.argv) < 4: raise ValueError('Ungültige Worker-Parameter')
     op, outdir, *raw_inputs = sys.argv[1:]
     reverse_second = '--reverse-second' in raw_inputs
+    reverse_inputs = '--reverse-inputs' in raw_inputs
     parallel_gs = '--parallel-gs' in raw_inputs
     profile_args = [p for p in raw_inputs if p.startswith('--profile=')]
     profile = profile_args[0].split('=', 1)[1] if profile_args else 'stark'
@@ -73,7 +74,7 @@ def main():
     language = language_args[0].split('=', 1)[1] if language_args else 'deu'
     inputs = [
         p for p in raw_inputs
-        if p != '--reverse-second' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
+        if p != '--reverse-second' and p != '--reverse-inputs' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
     ]
     outdir = Path(outdir).resolve()
     for p in inputs:
@@ -82,6 +83,8 @@ def main():
     if op == 'merge':
         if len(inputs)<2: raise ValueError('Mindestens zwei PDFs erforderlich')
         writer=PdfWriter()
+        if reverse_inputs:
+            inputs.reverse()
         for p in inputs:
             reader=PdfReader(p, strict=True)
             if len(reader.pages)>1000: raise ValueError('Maximal 1000 Seiten pro Eingabedatei')
