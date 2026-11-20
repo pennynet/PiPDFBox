@@ -15,8 +15,9 @@ PiPDFBox ist eine selbst gehostete Webanwendung zur Verarbeitung von PDF-Dateien
 | Komprimieren | PDF-Dateigröße mit wählbarem Profil reduzieren |
 | Archivieren | PDF/A-1b, PDF/A-2b oder PDF/A-3b erzeugen |
 | Texterkennung | Scans mit OCR durchsuchbar machen (Deutsch, Englisch oder beide) |
+| PDF signieren | PDF mit einer D-TRUST-Signaturkarte über OpenSC und pyHanko signieren |
 
-Die PDF-Signatur-Kachel ist als **„In Planung“** gekennzeichnet und noch keine verfügbare Funktion.
+Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signaturkarte. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben.
 
 ## Voraussetzungen
 
@@ -25,7 +26,7 @@ Die PDF-Signatur-Kachel ist als **„In Planung“** gekennzeichnet und noch kei
 - Netzwerkverbindung und sudo-Rechte
 - Zugriff auf das GitHub-Repository
 
-Der Installer prüft und installiert die benötigten Systempakete. Dazu gehören unter anderem Nginx, PHP 8.4 FPM, Python 3, Ghostscript, qpdf, Poppler, OCRmyPDF und Tesseract mit deutschen und englischen Sprachdaten.
+Der Installer prüft und installiert die benötigten Systempakete. Dazu gehören unter anderem Nginx, PHP 8.4 FPM, Python 3, Ghostscript, qpdf, Poppler, OCRmyPDF und Tesseract mit deutschen und englischen Sprachdaten. Zusätzlich baut er OpenSC 0.27.1 aus dem offiziellen Quellarchiv und installiert pyHanko 0.38.2 samt Python-Abhängigkeiten in einer anwendungseigenen Paketablage unter /opt/pipdfbox/python. Es wird keine virtuelle Python-Umgebung verwendet.
 
 ## Installation
 
