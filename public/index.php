@@ -546,6 +546,16 @@ $result = $_SESSION['result'] ?? null;
     </form>
 </dialog>
 
+<dialog id="sign-limit-dialog" class="settings-dialog" aria-labelledby="sign-limit-title">
+    <div>
+        <h3 id="sign-limit-title">PDF signieren</h3>
+        <p>Es kann nur eine Datei gleichzeitig signiert werden.</p>
+        <div class="dialog-actions">
+            <button type="button" class="primary" id="sign-limit-close">OK</button>
+        </div>
+    </div>
+</dialog>
+
 <dialog id="signature-dialog" class="signature-dialog signature-report-dialog" aria-labelledby="signature-dialog-title">
     <div class="signature-dialog-body">
         <h2 id="signature-dialog-title">Signaturprüfung</h2>
