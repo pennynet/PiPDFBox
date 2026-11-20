@@ -62,7 +62,7 @@ download_app_from_github() {
     fi
 
     extracted="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d -name 'PiPDFBox-*' -print -quit)"
-    if [[ -z "$extracted" || ! -f "$extracted/public/index.php" || ! -f "$extracted/worker.py" ]]; then
+    if [[ -z "$extracted" || ! -f "$extracted/public/index.php" || ! -f "$extracted/worker.py" || ! -f "$extracted/opensc.py" ]]; then
         rm -rf "$temp_dir"
         error "Das GitHub-Archiv enthält nicht die erwarteten PiPDFBox-Dateien."
         return 1
@@ -249,7 +249,8 @@ install_python_signing_dependencies() {
         --ignore-installed \
         --no-warn-script-location \
         --disable-pip-version-check \
-        "pyHanko==0.38.2" || {
+        "pyHanko==0.38.2" \
+        "cryptography>=48.0.0" || {
             error "pyHanko konnte nicht installiert werden."
             return 1
         }
@@ -262,7 +263,7 @@ install_python_signing_dependencies() {
 install_signing_dependencies() {
     install_opensc || return 1
     install_python_signing_dependencies || return 1
-    if systemctl list-unit-files pcscd.socket >/dev/null 2>&1; then
+    if systemctl cat pcscd.socket >/dev/null 2>&1; then
         systemctl enable --now pcscd.socket
     else
         systemctl enable --now pcscd
