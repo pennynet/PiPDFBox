@@ -498,6 +498,7 @@ install_app() {
     download_app_from_github || return 1
     check_app || return 1
     install_signing_dependencies || return 1
+    install_sealium_key_support || return 1
     systemctl is-active --quiet "$PHP_FPM_SERVICE" || {
         error "$PHP_FPM_SERVICE ist nicht aktiv."
         return 1
@@ -697,6 +698,7 @@ update_app() {
     download_app_from_github || return 1
     check_app || return 1
     install_signing_dependencies || return 1
+    install_sealium_key_support || return 1
     install_launcher
     install_cleanup_timer
     info "Anwendungscode aktualisiert. Einstellungen und PDF-Aufträge bleiben erhalten."
