@@ -26,7 +26,13 @@ from cryptography import x509 as crypto_x509
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
 from pyhanko.pdf_utils.generic import DictionaryObject, NameObject, StreamObject
-from pyhanko.pdf_utils.layout import BoxConstraints
+from pyhanko.pdf_utils.content import RawContent
+from pyhanko.pdf_utils.layout import (
+    AxisAlignment,
+    BoxConstraints,
+    Margins,
+    SimpleBoxLayoutRule,
+)
 from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import signers
 from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
@@ -263,39 +269,108 @@ def _append_signature_page(
     else:
         box = (
             crop_urx - margin_x - stamp_height,
-            crop_ury - margin_y - stamp_width,
-            crop_urx - margin_x,
-            crop_ury - margin_y,
-        )
-
-    return page_count, box
-
-
-def _apply_signature_stamp(
+            crop_ury - margin_y - stamdef _apply_signature_stamp(
     writer: IncrementalPdfFileWriter,
     page_index: int,
     box: tuple[float, float, float, float],
     signer_name: str | None,
 ) -> None:
-    """Draw the standard pyHanko signature stamp into page content, not a widget."""
+    """Draw an award-style seal and the two signature text lines into page content."""
     llx, lly, urx, ury = box
     signing_time = datetime.now(ZoneInfo("Europe/Berlin"))
     timezone_name = "MESZ" if signing_time.dst() else "MEZ"
     timestamp = f"{signing_time:%d.%m.%Y} um {signing_time:%H:%M} {timezone_name}"
 
-    stamp_style = replace(
+    stamp_width = urx - llx
+    stamp_height = ury - lly
+    badge_size = min(44.0, stamp_height - 12.0)
+    if badge_size <= 0:
+        raise OpenSCPdfSigningError("Die Stempelfläche ist zu klein")
+
+    badge_x = llx + 10.0
+    badge_y = lly + (stamp_height - badge_size) / 2.0
+    text_x = badge_x + badge_size + 10.0
+    text_width = urx - text_x - 10.0
+    if text_width <= 0:
+        raise OpenSCPdfSigningError("Die Stempelfläche ist zu schmal")
+
+    # Vektor-Siegel: goldene Medaille mit Stern und zwei Bändern.
+    scale = badge_size / 44.0
+    badge_art = f"""
+q
+{scale:g} 0 0 {scale:g} {badge_x:g} {badge_y:g} cm
+0.68 0.46 0.13 RG
+1.4 w
+0.97 0.88 0.66 rg
+15 19 m 10 2 l 19 7 l 21 19 l h B
+29 19 m 34 2 l 25 7 l 23 19 l h B
+0.99 0.95 0.83 rg
+22 39 m 28.075 39 33 34.075 33 28 c
+33 21.925 28.075 17 22 17 c
+15.925 17 11 21.925 11 28 c
+11 34.075 15.925 39 22 39 c h B
+22 36 m 26.418 36 30 32.418 30 28 c
+30 23.582 26.418 20 22 20 c
+17.582 20 14 23.582 14 28 c
+14 32.418 17.582 36 22 36 c h S
+22 35 m 24 30.7 l 28.8 30.2 l 25.2 26.8 l
+26.2 22 l 22 24.4 l 17.8 22 l
+18.8 26.8 l 15.2 30.2 l 20 30.7 l h f
+Q
+"""
+    RawContent(data=badge_art.encode("ascii")).add_to_page(writer, page_index)
+
+    left_layout = SimpleBoxLayoutRule(
+        x_align=AxisAlignment.ALIGN_MIN,
+        y_align=AxisAlignment.ALIGN_MID,
+        margins=Margins.uniform(0),
+    )
+    centered_layout = SimpleBoxLayoutRule(
+        x_align=AxisAlignment.ALIGN_MID,
+        y_align=AxisAlignment.ALIGN_MID,
+        margins=Margins.uniform(0),
+    )
+
+    first_line_style = replace(
         DEFAULT_SIGNING_STAMP_STYLE,
-        stamp_text=(
-            "qualifiziert elektronisch signiert von %(signer)s\n"
-            "am %(ts)s"
+        background=None,
+        border_width=0,
+        stamp_text="qualifiziert elektronisch signiert von %(signer)s",
+        inner_content_layout=left_layout,
+    )
+    first_line = first_line_style.create_stamp(
+        writer,
+        BoxConstraints(width=text_width, height=20),
+        {"signer": signer_name or "D-TRUST"},
+    )
+    first_line.apply(
+        dest_page=page_index,
+        x=text_x,
+        y=lly + stamp_height * 0.57,
+        coords=CoordinateSystem.PAGE_DEFAULT,
+    )
+
+    second_line_style = replace(
+        first_line_style,
+        stamp_text="am %(ts)s",
+        inner_content_layout=centered_layout,
+        text_box_style=replace(
+            first_line_style.text_box_style,
+            font_size=9,
         ),
     )
-    stamp = stamp_style.create_stamp(
+    second_line = second_line_style.create_stamp(
         writer,
-        BoxConstraints(width=urx - llx, height=ury - lly),
-        {"signer": signer_name or "D-TRUST", "ts": timestamp},
+        BoxConstraints(width=text_width, height=18),
+        {"ts": timestamp},
     )
-    stamp.apply(
+    second_line.apply(
+        dest_page=page_index,
+        x=text_x,
+        y=lly + stamp_height * 0.18,
+        coords=CoordinateSystem.PAGE_DEFAULT,
+    )
+y(
         dest_page=page_index,
         x=llx,
         y=lly,
