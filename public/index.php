@@ -45,7 +45,7 @@ $filenameSettingsFile = rtrim($dataDir, '/') . '/filename-settings.json';
 $filenameMode = 'current';
 if (is_file($filenameSettingsFile)) {
     $storedFilenameSettings = json_decode((string)file_get_contents($filenameSettingsFile), true);
-    if (is_array($storedFilenameSettings) && in_array(($storedFilenameSettings['mode'] ?? ''), ['current', 'action', 'date'], true)) {
+    if (is_array($storedFilenameSettings) && in_array(($storedFilenameSettings['mode'] ?? ''), ['current', 'action', 'date', 'date_prefix'], true)) {
         $filenameMode = $storedFilenameSettings['mode'];
     }
 }
@@ -242,7 +242,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_
         $_SESSION['flash_error'] = 'Sitzung abgelaufen. Bitte Seite neu laden.';
     } else {
         $choice = (string)($_POST['filename_mode'] ?? 'current');
-        if (!in_array($choice, ['current', 'action', 'date'], true)) {
+        if (!in_array($choice, ['current', 'action', 'date', 'date_prefix'], true)) {
             $_SESSION['flash_error'] = 'Ungültige Dateinamen-Einstellung.';
         } else {
             $json = json_encode(['mode' => $choice], JSON_PRETTY_PRINT);
@@ -505,6 +505,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 ];
                                 if ($filenameMode === 'action') {
                                     $newBase = $safeStem . '-' . ($actionNames[$op] ?? $op) . ($extension !== '' ? '.' . $extension : '');
+                                } elseif ($filenameMode === 'date_prefix') {
+                                    $prefix = trim((string)($_POST['filename_prefix'] ?? ''));
+                                    if ($prefix === '' || mb_strlen($prefix, 'UTF-8') > 80) {
+                                        $error = 'Bitte einen Prefix mit maximal 80 Zeichen eingeben.';
+                                    } else {
+                                        $safePrefix = preg_replace('/[^\\p{L}\\p{N}._-]+/u', '-', $prefix) ?? '';
+                                        $safePrefix = trim($safePrefix, '.-_');
+                                        if ($safePrefix === '') {
+                                            $error = 'Der Prefix enthält keine verwendbaren Zeichen.';
+                                        } else {
+                                            $newBase = date('ymd') . '-' . $safePrefix . '-' . $safeStem . ($extension !== '' ? '.' . $extension : '');
+                                        }
+                                    }
                                 } else {
                                     $newBase = date('ymd') . '-' . $safeStem . ($extension !== '' ? '.' . $extension : '');
                                 }
@@ -642,7 +655,7 @@ $result = $_SESSION['result'] ?? null;
         <div class="success"><?= h($notice) ?></div>
     <?php endif; ?>
 
-    <form class="panel" method="post" enctype="multipart/form-data">
+    <form class="panel" method="post" enctype="multipart/form-data" data-filename-mode="<?= h($filenameMode) ?>">
 
         <input
             type="hidden"
@@ -873,6 +886,19 @@ $result = $_SESSION['result'] ?? null;
             </form>
         </dialog>
 
+        <dialog id="filename-prefix-dialog" class="settings-dialog" aria-labelledby="filename-prefix-title">
+            <form method="dialog">
+                <h3 id="filename-prefix-title">Dateinamen-Prefix</h3>
+                <label for="filename-prefix-input">Prefix für diese Verarbeitung</label>
+                <input type="text" id="filename-prefix-input" maxlength="80" autocomplete="off" placeholder="z. B. Rechnung">
+                <p class="settings-help">Der Prefix wird zwischen Datum und Originalnamen eingefügt.</p>
+                <div class="dialog-actions">
+                    <button type="button" class="dialog-cancel" id="filename-prefix-cancel">Abbrechen</button>
+                    <button type="button" class="primary" id="filename-prefix-confirm">Weiter</button>
+                </div>
+            </form>
+        </dialog>
+
         <dialog id="filename-dialog" class="settings-dialog" aria-labelledby="filename-dialog-title">
             <form method="post">
                 <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
@@ -880,7 +906,8 @@ $result = $_SESSION['result'] ?? null;
                 <h3 id="filename-dialog-title">Dateinamen</h3>
                 <label><input type="radio" name="filename_mode" value="current" <?= $filenameMode === 'current' ? 'checked' : '' ?>> Bisherige Dateinamen verwenden</label>
                 <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>> Originalname + Aktion (z. B. test-nummeriert.pdf)</label>
-                <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>> Datum + Originalname (z. B. 261120-test.pdf, YYMMDD)</label>
+                <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>> Datum + Originalname (z. B. 261120-test.pdf)</label>
+                <label><input type="radio" name="filename_mode" value="date_prefix" <?= $filenameMode === 'date_prefix' ? 'checked' : '' ?>> Datum + Prefix + Originalname (Prefix wird bei jeder Verarbeitung abgefragt)</label>
                 <div class="dialog-actions">
                     <button type="button" class="dialog-cancel" id="filename-dialog-cancel">Abbrechen</button>
                     <button type="submit" class="primary">Speichern</button>
@@ -894,7 +921,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=34"></script>
+<script src="/assets/app.js?v=35"></script>
 
 </body>
 </html>
