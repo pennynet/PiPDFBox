@@ -144,7 +144,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=27">
+        <link rel="stylesheet" href="/assets/style.css?v=28">
     </head>
     <body>
         <main class="login">
@@ -630,6 +630,7 @@ $result = $_SESSION['result'] ?? null;
             <div class="zip-browser-toolbar">
                 <button type="button" class="dialog-cancel" id="zip-browser-up" disabled>↑ Übergeordneter Ordner</button>
                 <span id="zip-browser-path">/</span>
+                <button type="button" class="dialog-cancel zip-browser-import" id="zip-browser-import" disabled>Auswahl übernehmen (0)</button>
             </div>
             <div id="zip-browser-list" class="zip-browser-list" aria-live="polite"></div>
         </dialog>
@@ -810,7 +811,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=29"></script>
+<script src="/assets/app.js?v=30"></script>
 
 </body>
 </html>
