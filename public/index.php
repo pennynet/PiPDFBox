@@ -673,7 +673,7 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Stempel<span id="tsa-link-wrap" hidden> und <a href="#" id="tsa-settings-link" class="inline-settings-link">Zeitstempel</a></span> anfügen
+                        Stempel und Zeitserver anfügen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
