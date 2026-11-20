@@ -67,31 +67,40 @@ function renderFiles() {
             draggedIndex = index;
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', String(index));
-            // Eigenes Drag-Bild behalten, während die Originalkachel aus dem Grid-Fluss
-            // genommen wird. So bleibt am Ursprungsplatz keine sichtbare Lücke.
             event.dataTransfer.setDragImage(chip, Math.min(event.offsetX, chip.offsetWidth), Math.min(event.offsetY, chip.offsetHeight));
             chip.classList.add('dragging');
         });
         chip.addEventListener('dragend', () => {
+            const dragged = list.querySelector('.pdf-chip.dragging');
+            if (dragged) dragged.classList.remove('dragging');
             draggedIndex = null;
-            chip.classList.remove('dragging');
             list.querySelectorAll('.pdf-chip').forEach(item => item.classList.remove('drag-over'));
         });
         chip.addEventListener('dragover', event => {
+            if (draggedIndex === null || draggedIndex === index) return;
             event.preventDefault();
-            if (draggedIndex !== null && draggedIndex !== index) chip.classList.add('drag-over');
+            const rect = chip.getBoundingClientRect();
+            const insertAfter = event.clientX > rect.left + rect.width / 2;
+            const moving = list.querySelector('.pdf-chip.dragging');
+            if (!moving || moving === chip) return;
+            if (insertAfter) {
+                if (chip.nextElementSibling !== moving) list.insertBefore(moving, chip.nextElementSibling);
+            } else if (chip !== moving.nextElementSibling) {
+                list.insertBefore(moving, chip);
+            }
+            chip.classList.add('drag-over');
         });
         chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
         chip.addEventListener('drop', event => {
             event.preventDefault();
-            chip.classList.remove('drag-over');
-            const from = draggedIndex;
-            const to = index;
-            if (from === null || from === to) return;
-            const reordered = currentFiles();
-            const [moved] = reordered.splice(from, 1);
-            reordered.splice(to, 0, moved);
-            setFiles(reordered);
+            event.stopPropagation();
+            const order = [...list.querySelectorAll('.pdf-chip:not(.pdf-chip-result)')]
+                .map(item => Number(item.dataset.index));
+            const files = currentFiles();
+            if (order.length === files.length && order.every(Number.isInteger)) {
+                setFiles(order.map(originalIndex => files[originalIndex]));
+            }
+            draggedIndex = null;
         });
         list.appendChild(chip);
     });
