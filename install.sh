@@ -221,7 +221,7 @@ install_opensc() {
         fi
         (
             cd "$source_dir"
-            ./configure --prefix="$OPENSC_PREFIX" --sysconfdir="/etc/opensc-$OPENSC_VERSION"
+            ./configure --prefix="$OPENSC_PREFIX" --sysconfdir="/etc/opensc-$OPENSC_VERSION" --disable-strict
             make -j"$(nproc)"
             make install
         ) || {
@@ -585,6 +585,12 @@ check_installation() {
     echo "Installierte Version: $(cat "$APP_DIR/VERSION" 2>/dev/null || echo unbekannt)"
     [[ ! -f "$PORT_FILE" ]] || echo "Port: $(cat "$PORT_FILE")"
     if systemctl is-active --quiet nginx; then echo "[OK] nginx aktiv"; else echo "[FEHLT] nginx nicht aktiv"; failed=1; fi
+    if systemctl is-active --quiet pcscd.socket || systemctl is-active --quiet pcscd; then
+        echo "[OK] PC/SC-Dienst aktiv"
+    else
+        echo "[FEHLT] PC/SC-Dienst nicht aktiv"
+        failed=1
+    fi
     if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then echo "[OK] $PHP_FPM_SERVICE aktiv"; else echo "[FEHLT] $PHP_FPM_SERVICE nicht aktiv"; failed=1; fi
     if nginx -t; then echo "[OK] Nginx-Konfiguration"; else failed=1; fi
     return "$failed"
@@ -693,7 +699,10 @@ uninstall_app() {
 
     if [[ "$choice" == "2" ]]; then
         rm -rf "$CONFIG_DIR" "$DATA_DIR"
-        info "PiPDFBox einschließlich Konfiguration und PDF-Aufträgen entfernt."
+        rm -rf "$OPENSC_PREFIX" "/etc/opensc-$OPENSC_VERSION"
+        rm -f /etc/ld.so.conf.d/opensc-0.27.1.conf
+        ldconfig
+        info "PiPDFBox einschließlich Konfiguration, PDF-Aufträgen und eigenem OpenSC-Build entfernt."
     else
         info "Anwendung entfernt. Konfiguration und PDF-Aufträge bleiben erhalten."
     fi
