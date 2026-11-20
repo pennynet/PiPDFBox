@@ -382,10 +382,16 @@ filenamePrefixDialog?.addEventListener('click', event => {
 
 let bypassSignedPdfWarning = false;
 let pendingSignedPdfSubmitter = null;
+let pendingSignedPdfAction = null;
 const signedPdfWarningDialog = document.getElementById('signed-pdf-warning-dialog');
 document.getElementById('signed-pdf-warning-cancel')?.addEventListener('click', () => {
     signedPdfWarningDialog?.close();
     pendingSignedPdfSubmitter = null;
+    if (pendingSignedPdfAction) {
+        const cancelAction = pendingSignedPdfAction.cancel;
+        pendingSignedPdfAction = null;
+        cancelAction?.();
+    }
     bypassSignedPdfWarning = false;
 });
 document.getElementById('signed-pdf-warning-confirm')?.addEventListener('click', () => {
@@ -393,7 +399,13 @@ document.getElementById('signed-pdf-warning-confirm')?.addEventListener('click',
     const button = pendingSignedPdfSubmitter;
     pendingSignedPdfSubmitter = null;
     bypassSignedPdfWarning = true;
-    if (button) continueTaskSubmission(button);
+    if (button) {
+        continueTaskSubmission(button);
+    } else if (pendingSignedPdfAction) {
+        const action = pendingSignedPdfAction.confirm;
+        pendingSignedPdfAction = null;
+        action?.();
+    }
 });
 
 async function continueTaskSubmission(button) {
@@ -617,9 +629,19 @@ async function reuseResultForProcessing(button) {
         const blob = await response.blob();
         const name = list.dataset.resultName || 'pipdfbox-ergebnis.pdf';
         const file = new File([blob], name, {type:'application/pdf', lastModified:Date.now()});
-        if (await pdfHasSignature(file) && !window.confirm('Bei der Weiterverarbeitung wird die Signatur ungültig!')) {
-            button.disabled = false;
-            button.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+        if (await pdfHasSignature(file)) {
+            pendingSignedPdfAction = {
+                confirm: () => {
+                    acceptFiles([file]);
+                    const firstTask = document.querySelector('.tool-grid');
+                    firstTask?.scrollIntoView({behavior:'smooth', block:'nearest'});
+                },
+                cancel: () => {
+                    button.disabled = false;
+                    button.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+                }
+            };
+            signedPdfWarningDialog?.showModal();
             return;
         }
         acceptFiles([file]);
