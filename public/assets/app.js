@@ -328,7 +328,6 @@ filenamePrefixDialog?.addEventListener('click', event => {
 
 document.querySelector('form.panel').addEventListener('submit', event => {
     const button = event.submitter || document.activeElement;
-    const button = event.submitter || document.activeElement;
     if (!bypassFilenamePrefixPrompt && event.currentTarget.dataset.filenameMode === 'date_prefix' && button?.classList.contains('task-button')) {
         event.preventDefault();
         pendingFilenameSubmitter = button;
