@@ -201,7 +201,7 @@ class OpenSCPdfSigner:
         created_output = False
         try:
             with input_pdf.open("rb") as source:
-                writer = IncrementalPdfFileWriter(source)
+                writer = IncrementalPdfFileWriter(source, strict=False)
                 with output_pdf.open("xb") as destination:
                     created_output = True
                     pdf_signer.sign_pdf(writer, output=destination)
