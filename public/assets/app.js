@@ -86,6 +86,11 @@ function setFiles(files) {
 }
 function renderFiles() {
     const files = currentFiles();
+    const reverseInputsCheckbox = document.querySelector('input[name="reverse_inputs"]');
+    if (reverseInputsCheckbox) {
+        reverseInputsCheckbox.disabled = files.length <= 1;
+        if (files.length <= 1) reverseInputsCheckbox.checked = false;
+    }
     const completionNotice = document.querySelector('.success');
     if (completionNotice && ['Verarbeitung abgeschlossen.', 'PDF wurde erfolgreich signiert.'].includes(completionNotice.textContent.trim())) {
         completionNotice.hidden = files.length === 0 && !list.dataset.resultUrl;
@@ -243,6 +248,12 @@ function acceptFiles(incoming) {
     setFiles(merged);
 }
 picker.addEventListener('change', () => acceptFiles(picker.files));
+
+const reverseInputsCheckbox = document.querySelector('input[name="reverse_inputs"]');
+reverseInputsCheckbox?.addEventListener('change', () => {
+    if (!reverseInputsCheckbox.checked || currentFiles().length <= 1) return;
+    setFiles(currentFiles().reverse());
+});
 drop.addEventListener('click', event => {
     if (event.target.closest('.pdf-chip')) return;
     if (event.target === picker) return;
