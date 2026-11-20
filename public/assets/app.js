@@ -225,27 +225,79 @@ function renderFiles() {
 // kommt das Ergebnis aus der PHP-Session und muss sofort als Chip erscheinen.
 renderFiles();
 
-function acceptFiles(incoming) {
+const officeExtensions = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']);
+let conversionInProgress = false;
+const conversionStatus = document.createElement('div');
+conversionStatus.className = 'settings-status';
+conversionStatus.setAttribute('role', 'status');
+conversionStatus.setAttribute('aria-live', 'polite');
+conversionStatus.hidden = true;
+drop.appendChild(conversionStatus);
+
+async function acceptFiles(incoming) {
+    if (conversionInProgress) return;
     const existing = currentFiles();
-    const additions = [...incoming].filter(file =>
-        file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-    );
-    // Sobald ein neuer Upload beginnt, ist ein zuvor erzeugtes Ergebnis veraltet.
-    // Sofort aus der Kachel entfernen; serverseitig wird es beim neuen Auftrag
-    // zusätzlich vor der Verarbeitung aus der Session gelöscht.
-    if (additions.length > 0) {
-        delete list.dataset.resultUrl;
-        delete list.dataset.resultName;
-    }
-    const merged = [...existing];
-    additions.forEach(file => {
-        if (!merged.some(old => old.name === file.name && old.size === file.size && old.lastModified === file.lastModified)) merged.push(file);
+    const additions = [...incoming].filter(file => {
+        const ext = file.name.split('.').pop().toLowerCase();
+        return file.type === 'application/pdf' || ext === 'pdf' || officeExtensions.has(ext);
     });
-    if (merged.length > 100) {
-        alert('Maximal 100 PDF-Dateien pro Auftrag.');
+    if (!additions.length) {
+        alert('Bitte PDF- oder unterstützte Office-Dateien auswählen.');
         return;
     }
-    setFiles(merged);
+
+    conversionInProgress = true;
+    const taskButtons = [...document.querySelectorAll('.task-button')];
+    taskButtons.forEach(button => { button.disabled = true; });
+    conversionStatus.hidden = false;
+    const merged = [...existing];
+    try {
+        for (let index = 0; index < additions.length; index++) {
+            const file = additions[index];
+            const extension = file.name.split('.').pop().toLowerCase();
+            let readyFile = file;
+            if (officeExtensions.has(extension)) {
+                conversionStatus.textContent = 'Konvertiere ' + file.name + ' (' + (index + 1) + '/' + additions.length + ') …';
+                const body = new FormData();
+                body.append('office_file', file, file.name);
+                body.append('csrf', drop.dataset.csrf || '');
+                const response = await fetch('/convert-office.php', {
+                    method: 'POST',
+                    body,
+                    credentials: 'same-origin',
+                    cache: 'no-store'
+                });
+                if (!response.ok) {
+                    let message = 'Office-Datei konnte nicht umgewandelt werden.';
+                    try {
+                        const data = await response.json();
+                        if (data.error) message = data.error;
+                    } catch (_) {}
+                    throw new Error(file.name + ': ' + message);
+                }
+                const pdfBlob = await response.blob();
+                const pdfName = file.name.replace(/\.[^.]+$/, '') + '.pdf';
+                readyFile = new File([pdfBlob], pdfName, {type:'application/pdf', lastModified:Date.now()});
+            }
+            if (!merged.some(old => old.name === readyFile.name && old.size === readyFile.size && old.lastModified === readyFile.lastModified)) {
+                merged.push(readyFile);
+            }
+            if (merged.length > 100) throw new Error('Maximal 100 Dateien pro Auftrag.');
+            setFiles(merged);
+            if (index === 0) {
+                delete list.dataset.resultUrl;
+                delete list.dataset.resultName;
+            }
+        }
+        conversionStatus.textContent = 'Dateien sind bereit.';
+    } catch (error) {
+        alert(error.message || 'Datei konnte nicht verarbeitet werden.');
+        conversionStatus.textContent = 'Upload/Umwandlung nicht vollständig.';
+    } finally {
+        conversionInProgress = false;
+        taskButtons.forEach(button => { button.disabled = false; });
+        setTimeout(() => { conversionStatus.hidden = true; }, 3500);
+    }
 }
 picker.addEventListener('change', () => acceptFiles(picker.files));
 
