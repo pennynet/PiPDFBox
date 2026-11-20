@@ -622,6 +622,18 @@ $result = $_SESSION['result'] ?? null;
             <iframe id="pdf-viewer-frame" title="PDF-Vorschau"></iframe>
         </dialog>
 
+        <dialog id="zip-browser-dialog" class="pdf-viewer-dialog zip-browser-dialog" aria-labelledby="zip-browser-title">
+            <div class="pdf-viewer-head">
+                <strong id="zip-browser-title">ZIP-Inhalt</strong>
+                <button type="button" class="dialog-cancel" id="zip-browser-close">Schließen</button>
+            </div>
+            <div class="zip-browser-toolbar">
+                <button type="button" class="dialog-cancel" id="zip-browser-up" disabled>↑ Übergeordneter Ordner</button>
+                <span id="zip-browser-path">/</span>
+            </div>
+            <div id="zip-browser-list" class="zip-browser-list" aria-live="polite"></div>
+        </dialog>
+
         <h2 class="tools-heading">PDF-Aufgabe auswählen</h2>
 
         <div class="tool-grid">
@@ -798,7 +810,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=28"></script>
+<script src="/assets/app.js?v=29"></script>
 
 </body>
 </html>
