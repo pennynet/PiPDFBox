@@ -934,7 +934,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=41"></script>
+<script src="/assets/app.js?v=42"></script>
 
 </body>
 </html>
