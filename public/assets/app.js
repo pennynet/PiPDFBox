@@ -12,32 +12,59 @@ let selectedFiles = [];
 let pointerDrag = null;
 let suppressChipClick = false;
 
+function beginVisualDrag(event) {
+    const state = pointerDrag;
+    if (!state || state.active) return;
+    state.active = true;
+    suppressChipClick = true;
+    const rect = state.chip.getBoundingClientRect();
+    const placeholder = document.createElement('div');
+    placeholder.className = 'pdf-chip-placeholder';
+    placeholder.style.width = rect.width + 'px';
+    placeholder.style.height = rect.height + 'px';
+    const ghost = state.chip.cloneNode(true);
+    ghost.classList.add('pdf-chip-ghost');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.height = rect.height + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+    document.body.appendChild(ghost);
+    state.chip.replaceWith(placeholder);
+    state.placeholder = placeholder;
+    state.ghost = ghost;
+    state.offsetX = event.clientX - rect.left;
+    state.offsetY = event.clientY - rect.top;
+}
+
 document.addEventListener('pointermove', event => {
     if (!pointerDrag) return;
     const dx = event.clientX - pointerDrag.startX;
     const dy = event.clientY - pointerDrag.startY;
-    if (!pointerDrag.active && Math.hypot(dx, dy) < 6) return;
-    pointerDrag.active = true;
-    suppressChipClick = true;
-    pointerDrag.chip.classList.add('dragging');
+    if (!pointerDrag.active && Math.hypot(dx, dy) < 5) beginVisualDrag(event);
+    if (!pointerDrag.active) return;
+
+    pointerDrag.ghost.style.left = (event.clientX - pointerDrag.offsetX) + 'px';
+    pointerDrag.ghost.style.top = (event.clientY - pointerDrag.offsetY) + 'px';
+
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.pdf-chip:not(.pdf-chip-result)');
-    if (!target || target === pointerDrag.chip || !list.contains(target)) return;
+    if (!target || !list.contains(target)) return;
     const rect = target.getBoundingClientRect();
-    const after = event.clientY > rect.top + rect.height / 2
-        || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 2 && event.clientX > rect.left + rect.width / 2);
+    const after = event.clientX > rect.left + rect.width / 2;
+    const placeholder = pointerDrag.placeholder;
     if (after) {
-        if (target.nextElementSibling !== pointerDrag.chip) list.insertBefore(pointerDrag.chip, target.nextElementSibling);
-    } else if (target !== pointerDrag.chip.nextElementSibling) {
-        list.insertBefore(pointerDrag.chip, target);
+        if (target.nextElementSibling !== placeholder) list.insertBefore(placeholder, target.nextElementSibling);
+    } else if (placeholder.nextElementSibling !== target) {
+        list.insertBefore(placeholder, target);
     }
 });
 
 document.addEventListener('pointerup', () => {
     if (!pointerDrag) return;
-    const wasDragging = pointerDrag.active;
-    pointerDrag.chip.classList.remove('dragging');
-    if (wasDragging) {
+    const state = pointerDrag;
+    if (state.active) {
         const original = currentFiles();
+        state.ghost.remove();
+        state.placeholder.replaceWith(state.chip);
         const order = [...list.querySelectorAll('.pdf-chip:not(.pdf-chip-result)')].map(item => Number(item.dataset.index));
         if (order.length === original.length && order.every(Number.isInteger)) {
             setFiles(order.map(i => original[i]));
