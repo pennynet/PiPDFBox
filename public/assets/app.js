@@ -378,8 +378,28 @@ filenamePrefixDialog?.addEventListener('click', event => {
     }
 });
 
-document.querySelector('form.panel').addEventListener('submit', event => {
+let bypassSignedPdfWarning = false;
+document.querySelector('form.panel').addEventListener('submit', async event => {
     const button = event.submitter || document.activeElement;
+    if (bypassSignedPdfWarning) {
+        bypassSignedPdfWarning = false;
+    } else if (button?.classList.contains('task-button')) {
+        const files = currentFiles();
+        let hasSignedPdf = false;
+        for (const file of files) {
+            if ((file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) && await pdfHasSignature(file)) {
+                hasSignedPdf = true;
+                break;
+            }
+        }
+        if (hasSignedPdf) {
+            event.preventDefault();
+            if (!window.confirm('Bei der Weiterverarbeitung wird die Signatur ungültig!')) return;
+            bypassSignedPdfWarning = true;
+            event.currentTarget.requestSubmit(button);
+            return;
+        }
+    }
     if (!bypassFilenamePrefixPrompt && event.currentTarget.dataset.filenameMode === 'date_prefix' && button?.classList.contains('task-button')) {
         event.preventDefault();
         pendingFilenameSubmitter = button;
@@ -549,6 +569,29 @@ function showSignatureMessage(message, isError = false) {
     signatureResult.appendChild(paragraph);
 }
 
+// PDF-Signaturen sind im PDF-Quelltext durch ein /ByteRange-Feld
+// gekennzeichnet. Die Suche erfolgt blockweise, damit große PDFs nicht
+// vollständig zusätzlich in den Arbeitsspeicher geladen werden.
+async function pdfHasSignature(file) {
+    const marker = new TextEncoder().encode('/ByteRange');
+    const chunkSize = 1024 * 1024;
+    let carry = new Uint8Array(0);
+    for (let offset = 0; offset < file.size; offset += chunkSize) {
+        const chunk = new Uint8Array(await file.slice(offset, offset + chunkSize).arrayBuffer());
+        const data = new Uint8Array(carry.length + chunk.length);
+        data.set(carry);
+        data.set(chunk, carry.length);
+        outer: for (let i = 0; i <= data.length - marker.length; i++) {
+            for (let j = 0; j < marker.length; j++) {
+                if (data[i + j] !== marker[j]) continue outer;
+            }
+            return true;
+        }
+        carry = data.slice(Math.max(0, data.length - marker.length + 1));
+    }
+    return false;
+}
+
 async function reuseResultForProcessing(button) {
     button.disabled = true;
     button.title = 'Wird übernommen …';
@@ -558,6 +601,11 @@ async function reuseResultForProcessing(button) {
         const blob = await response.blob();
         const name = list.dataset.resultName || 'pipdfbox-ergebnis.pdf';
         const file = new File([blob], name, {type:'application/pdf', lastModified:Date.now()});
+        if (await pdfHasSignature(file) && !window.confirm('Bei der Weiterverarbeitung wird die Signatur ungültig!')) {
+            button.disabled = false;
+            button.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+            return;
+        }
         acceptFiles([file]);
         const firstTask = document.querySelector('.tool-grid');
         firstTask?.scrollIntoView({behavior:'smooth', block:'nearest'});
