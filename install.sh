@@ -171,9 +171,13 @@ check_dependencies() {
     done
 
     command -v php >/dev/null || { error "PHP CLI ist nicht verfügbar."; return 1; }
-    php -m | grep -qi '^session$' || { error "PHP-Erweiterung session fehlt."; return 1; }
-    php -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
-    php8.4 -m | grep -qi '^mbstring >/dev/null || { error "OCRmyPDF ist nicht verfügbar."; return 1; }
+    php8.4 -m | grep -qi '^session$' || { error "PHP-Erweiterung session fehlt."; return 1; }
+    php8.4 -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
+    php8.4 -m | grep -qi '^mbstring$' || { error "PHP-Erweiterung mbstring fehlt."; return 1; }
+    php8.4 -m | grep -qi '^zip$' || { error "PHP-Erweiterung zip fehlt."; return 1; }
+    phpenmod -v 8.4 zip || { error "PHP-Erweiterung zip konnte nicht aktiviert werden."; return 1; }
+    systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
+    command -v ocrmypdf >/dev/null || { error "OCRmyPDF ist nicht verfügbar."; return 1; }
     command -v tesseract >/dev/null || { error "Tesseract ist nicht verfügbar."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'deu' || { error "Tesseract-Sprachpaket Deutsch fehlt."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'eng' || { error "Tesseract-Sprachpaket Englisch fehlt."; return 1; }
