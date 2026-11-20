@@ -280,7 +280,7 @@ def _apply_signature_stamp(
     stamp_style = replace(
         DEFAULT_SIGNING_STAMP_STYLE,
         stamp_text="qualifiziert elektronisch signiert von %(signer)s um: %(ts)s",
-        timestamp_format="%d.%m.%Y",
+        timestamp_format="%d.%m.%Y %H:%M Uhr",
     )
     stamp = stamp_style.create_stamp(
         writer,
