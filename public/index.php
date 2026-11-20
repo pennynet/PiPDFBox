@@ -144,7 +144,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=26">
+        <link rel="stylesheet" href="/assets/style.css?v=27">
     </head>
     <body>
         <main class="login">
@@ -518,8 +518,16 @@ $result = $_SESSION['result'] ?? null;
     </nav>
 </header>
 
-<input type="file" id="signature-file" accept="application/pdf,.pdf" hidden>
-<div id="signature-result" class="signature-result" hidden aria-live="polite"></div>
+<dialog id="signature-dialog" class="signature-dialog signature-report-dialog" aria-labelledby="signature-dialog-title">
+    <div class="signature-dialog-body">
+        <h2 id="signature-dialog-title">Signaturprüfung</h2>
+        <div id="signature-result" aria-live="polite">Noch keine Prüfung durchgeführt.</div>
+        <div class="dialog-actions">
+            <button type="button" class="dialog-cancel" id="signature-back">Zurück</button>
+            <button type="button" class="primary" id="signature-print">Drucken</button>
+        </div>
+    </div>
+</dialog>
 
 <main class="wrap">
 
@@ -764,7 +772,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=10"></script>
+<script src="/assets/app.js?v=11"></script>
 
 </body>
 </html>
