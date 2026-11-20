@@ -498,7 +498,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=30">
+    <link rel="stylesheet" href="/assets/style.css?v=31">
 </head>
 <body>
 
@@ -575,27 +575,6 @@ $result = $_SESSION['result'] ?? null;
         <div class="success"><?= h($notice) ?></div>
     <?php endif; ?>
 
-    <?php
-    if (
-        $result &&
-        is_file($dataDir . '/jobs/' . $result['job'] . '/' . $result['file'])
-    ):
-    ?>
-        <section class="result">
-            <div>
-                <strong>Fertig!</strong>
-                <p><?= h($result['name']) ?></p>
-            </div>
-
-            <a
-                class="primary download"
-                href="/download.php?job=<?= h($result['job']) ?>&file=<?= rawurlencode($result['file']) ?>"
-            >
-                Download
-            </a>
-        </section>
-    <?php endif; ?>
-
     <form class="panel" method="post" enctype="multipart/form-data">
 
         <input
@@ -619,7 +598,11 @@ $result = $_SESSION['result'] ?? null;
                 multiple
                 required
             >
-            <div id="filelist" class="pdf-file-grid" aria-live="polite">
+            <div id="filelist" class="pdf-file-grid" aria-live="polite"
+                <?php if ($result && is_file($dataDir . '/jobs/' . $result['job'] . '/' . $result['file'])): ?>
+                    data-result-name="<?= h($result['name']) ?>"
+                    data-result-url="/download.php?job=<?= h($result['job']) ?>&file=<?= rawurlencode($result['file']) ?>"
+                <?php endif; ?>>
                 <span class="pdf-empty">Noch keine Dateien ausgewählt</span>
             </div>
         </div>
@@ -808,7 +791,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=16"></script>
+<script src="/assets/app.js?v=17"></script>
 
 </body>
 </html>
