@@ -19,6 +19,10 @@ NGINX_ENABLED="/etc/nginx/sites-enabled/pipdfbox"
 PHP_FPM_SERVICE="php8.4-fpm"
 PHP_INI_FILE="/etc/php/8.4/fpm/conf.d/99-pipdfbox.ini"
 GITHUB_ARCHIVE="https://codeload.github.com/pennynet/PiPDFBox/tar.gz/refs/heads/main"
+OPENSC_VERSION="0.27.1"
+OPENSC_PREFIX="/opt/opensc-${OPENSC_VERSION}"
+OPENSC_SHA256="976f4a23eaf3397a1a2c3a7aac80bf971a8c3d829c9a79f06145bfaeeae5eca7"
+PYTHON_LIB_DIR="$APP_DIR/python"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -58,7 +62,7 @@ download_app_from_github() {
     fi
 
     extracted="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d -name 'PiPDFBox-*' -print -quit)"
-    if [[ -z "$extracted" || ! -f "$extracted/public/index.php" || ! -f "$extracted/worker.py" ]]; then
+    if [[ -z "$extracted" || ! -f "$extracted/public/index.php" || ! -f "$extracted/worker.py" || ! -f "$extracted/opensc.py" ]]; then
         rm -rf "$temp_dir"
         error "Das GitHub-Archiv enthält nicht die erwarteten PiPDFBox-Dateien."
         return 1
@@ -107,6 +111,7 @@ REQUIRED_PACKAGES=(
     qpdf
     poppler-utils
     python3
+    python3-pip
     python3-pypdf
     python3-pil
     ocrmypdf
@@ -115,6 +120,19 @@ REQUIRED_PACKAGES=(
     tesseract-ocr-eng
     tesseract-ocr-osd
     iproute2
+    pcscd
+    libccid
+    libpcsclite-dev
+    libssl-dev
+    libreadline-dev
+    autoconf
+    automake
+    build-essential
+    docbook-xsl
+    xsltproc
+    libtool
+    pkg-config
+    zlib1g-dev
 )
 
 check_dependencies() {
@@ -164,10 +182,93 @@ check_dependencies() {
 }
 
 check_app() {
-    [[ -f "$PUBLIC_DIR/index.php" && -f "$APP_DIR/worker.py" ]] || {
+    [[ -f "$PUBLIC_DIR/index.php" && -f "$APP_DIR/worker.py" && -f "$APP_DIR/opensc.py" ]] || {
         error "PiPDFBox-Dateien fehlen unter $APP_DIR."
         return 1
     }
+}
+
+install_opensc() {
+    local temp_dir source_dir archive
+    if [[ -x "$OPENSC_PREFIX/bin/pkcs11-tool" && -f "$OPENSC_PREFIX/lib/opensc-pkcs11.so" ]]; then
+        info "OpenSC $OPENSC_VERSION ist bereits installiert."
+    else
+        temp_dir="$(mktemp -d /tmp/pipdfbox-opensc.XXXXXX)"
+        archive="$temp_dir/opensc-$OPENSC_VERSION.tar.gz"
+        info "Baue OpenSC $OPENSC_VERSION aus dem offiziellen Quellarchiv ..."
+        if ! curl -fL --retry 2 --connect-timeout 15 \
+            "https://github.com/OpenSC/OpenSC/releases/download/$OPENSC_VERSION/opensc-$OPENSC_VERSION.tar.gz" \
+            -o "$archive"; then
+            rm -rf "$temp_dir"
+            error "OpenSC-Quellarchiv konnte nicht geladen werden."
+            return 1
+        fi
+        if ! echo "$OPENSC_SHA256  $archive" | sha256sum -c -; then
+            rm -rf "$temp_dir"
+            error "SHA-256-Prüfung des OpenSC-Quellarchivs fehlgeschlagen."
+            return 1
+        fi
+        if ! tar -xzf "$archive" -C "$temp_dir"; then
+            rm -rf "$temp_dir"
+            error "OpenSC-Quellarchiv konnte nicht entpackt werden."
+            return 1
+        fi
+        source_dir="$temp_dir/opensc-$OPENSC_VERSION"
+        if [[ ! -x "$source_dir/configure" ]]; then
+            rm -rf "$temp_dir"
+            error "OpenSC-Quellarchiv enthält kein configure-Skript."
+            return 1
+        fi
+        (
+            cd "$source_dir"
+            ./configure --prefix="$OPENSC_PREFIX" --sysconfdir="/etc/opensc-$OPENSC_VERSION" --disable-strict
+            make -j"$(nproc)"
+            make install
+        ) || {
+            rm -rf "$temp_dir"
+            error "OpenSC $OPENSC_VERSION konnte nicht gebaut werden."
+            return 1
+        }
+        rm -rf "$temp_dir"
+    fi
+
+    printf '%s\n' "$OPENSC_PREFIX/lib" > /etc/ld.so.conf.d/opensc-0.27.1.conf
+    ldconfig
+    [[ -x "$OPENSC_PREFIX/bin/pkcs11-tool" && -f "$OPENSC_PREFIX/lib/opensc-pkcs11.so" ]] || {
+        error "OpenSC-Werkzeuge oder PKCS#11-Modul fehlen nach der Installation."
+        return 1
+    }
+}
+
+install_python_signing_dependencies() {
+    install -d -m 755 "$PYTHON_LIB_DIR"
+    info "Installiere pyHanko 0.38.2 und benötigte Python-Abhängigkeiten ..."
+    python3 -m pip install \
+        --target "$PYTHON_LIB_DIR" \
+        --upgrade \
+        --ignore-installed \
+        --no-warn-script-location \
+        --disable-pip-version-check \
+        "pyHanko==0.38.2" \
+        "cryptography>=48.0.0" || {
+            error "pyHanko konnte nicht installiert werden."
+            return 1
+        }
+    python3 -c "import sys; sys.path.insert(0, '$PYTHON_LIB_DIR'); import pyhanko, cryptography" || {
+        error "pyHanko oder cryptography kann nicht importiert werden."
+        return 1
+    }
+}
+
+install_signing_dependencies() {
+    install_opensc || return 1
+    install_python_signing_dependencies || return 1
+    if systemctl cat pcscd.socket >/dev/null 2>&1; then
+        systemctl enable --now pcscd.socket
+    else
+        systemctl enable --now pcscd
+    fi
+    info "Signier-Abhängigkeiten wurden installiert."
 }
 
 port_in_use_by_other_service() {
@@ -364,6 +465,7 @@ install_app() {
     check_dependencies || return 1
     download_app_from_github || return 1
     check_app || return 1
+    install_signing_dependencies || return 1
     systemctl is-active --quiet "$PHP_FPM_SERVICE" || {
         error "$PHP_FPM_SERVICE ist nicht aktiv."
         return 1
@@ -461,7 +563,19 @@ check_installation() {
     info "PiPDFBox – Installationsprüfung"
     local failed=0 file
     check_dependencies || failed=1
-    for file in "$PUBLIC_DIR/index.php" "$APP_DIR/worker.py" "$CONFIG_FILE" "$NGINX_SITE" "$PORT_FILE"; do
+    if [[ -x "$OPENSC_PREFIX/bin/pkcs11-tool" && -f "$OPENSC_PREFIX/lib/opensc-pkcs11.so" ]]; then
+        echo "[OK] OpenSC $OPENSC_VERSION"
+    else
+        echo "[FEHLT] OpenSC $OPENSC_VERSION"
+        failed=1
+    fi
+    if python3 -c "import sys; sys.path.insert(0, '$PYTHON_LIB_DIR'); import pyhanko, cryptography" 2>/dev/null; then
+        echo "[OK] pyHanko und cryptography"
+    else
+        echo "[FEHLT] pyHanko oder cryptography"
+        failed=1
+    fi
+    for file in "$PUBLIC_DIR/index.php" "$APP_DIR/worker.py" "$APP_DIR/opensc.py" "$CONFIG_FILE" "$NGINX_SITE" "$PORT_FILE"; do
         if [[ -f "$file" ]]; then
             echo "[OK] $file"
         else
@@ -472,6 +586,19 @@ check_installation() {
     echo "Installierte Version: $(cat "$APP_DIR/VERSION" 2>/dev/null || echo unbekannt)"
     [[ ! -f "$PORT_FILE" ]] || echo "Port: $(cat "$PORT_FILE")"
     if systemctl is-active --quiet nginx; then echo "[OK] nginx aktiv"; else echo "[FEHLT] nginx nicht aktiv"; failed=1; fi
+    if systemctl is-active --quiet pcscd.socket || systemctl is-active --quiet pcscd; then
+        echo "[OK] PC/SC-Dienst aktiv"
+    else
+        echo "[FEHLT] PC/SC-Dienst nicht aktiv"
+        failed=1
+    fi
+    if command -v runuser >/dev/null 2>&1 && \
+        runuser -u www-data -- "$PKCS11_TOOL" --module "$PKCS11_MODULE" --list-slots >/dev/null 2>&1; then
+        echo "[OK] PC/SC-Zugriff für www-data"
+    else
+        echo "[FEHLT] PC/SC-Zugriff für www-data (Kartenleser/PCSC-Socket prüfen)"
+        failed=1
+    fi
     if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then echo "[OK] $PHP_FPM_SERVICE aktiv"; else echo "[FEHLT] $PHP_FPM_SERVICE nicht aktiv"; failed=1; fi
     if nginx -t; then echo "[OK] Nginx-Konfiguration"; else failed=1; fi
     return "$failed"
@@ -522,6 +649,7 @@ update_app() {
     check_dependencies || return 1
     download_app_from_github || return 1
     check_app || return 1
+    install_signing_dependencies || return 1
     install_launcher
     install_cleanup_timer
     info "Anwendungscode aktualisiert. Einstellungen und PDF-Aufträge bleiben erhalten."
@@ -579,7 +707,10 @@ uninstall_app() {
 
     if [[ "$choice" == "2" ]]; then
         rm -rf "$CONFIG_DIR" "$DATA_DIR"
-        info "PiPDFBox einschließlich Konfiguration und PDF-Aufträgen entfernt."
+        rm -rf "$OPENSC_PREFIX" "/etc/opensc-$OPENSC_VERSION"
+        rm -f /etc/ld.so.conf.d/opensc-0.27.1.conf
+        ldconfig
+        info "PiPDFBox einschließlich Konfiguration, PDF-Aufträgen und eigenem OpenSC-Build entfernt."
     else
         info "Anwendung entfernt. Konfiguration und PDF-Aufträge bleiben erhalten."
     fi
