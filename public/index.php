@@ -40,9 +40,10 @@ function h(string $s): string {
  * Bei Erfolg enthält $output ausschließlich den Dateinamen aus stdout.
  * Warnungen aus stderr werden bei Erfolg ignoriert.
  */
-function runWorker(array $args, string &$output): int {
+function runWorker(array $args, string &$output, bool $signing = false): int {
+    $script = $signing ? '/opt/pipdfbox/opensc.py' : '/opt/pipdfbox/worker.py';
     $cmd = array_merge(
-        ['/usr/bin/python3', '/opt/pipdfbox/worker.py'],
+        ['/usr/bin/python3', $script],
         $args
     );
 
@@ -173,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } else {
 
         $op = (string)$_POST['action'];
-        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr'];
+        $allowed = ['merge', 'split', 'interleave', 'compress', 'number', 'pdfa', 'ocr', 'sign'];
 
         if (!in_array($op, $allowed, true)) {
             $error = 'Unbekannte Aktion.';
@@ -266,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$error && $op === 'number' && count($valid) !== 1) {
                     $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
                 }
-                if (!$error && in_array($op, ['pdfa', 'ocr'], true) && count($valid) !== 1) {
+                if (!$error && in_array($op, ['pdfa', 'ocr', 'sign'], true) && count($valid) !== 1) {
                     $error = 'Für diese Funktion bitte genau eine PDF auswählen.';
                 }
 
@@ -297,7 +298,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     if (!$error) {
 
-                        $args = [$op, $dir];
+                        $args = $op === 'sign'
+                            ? [$paths[0], $dir . '/signiert.pdf']
+                            : [$op, $dir];
 
                         if ($op === 'compress') {
                             $profile = (string)($_POST['compress_profile'] ?? 'stark');
@@ -333,8 +336,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
                             $args[] = '--language=' . $language;
                         }
-                        foreach ($paths as $p) {
-                            $args[] = $p;
+                        if ($op !== 'sign') {
+                            foreach ($paths as $p) {
+                                $args[] = $p;
+                            }
                         }
                         if ($op === 'interleave' && isset($_POST['reverse_second']) && $_POST['reverse_second'] === '1') {
                             $args[] = '--reverse-second';
@@ -355,7 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 try {
                                     // Eine weitere Anfrage wartet hier, bis der
                                     // laufende PDF-Auftrag beendet ist.
-                                    $rc = runWorker($args, $workerOutput);
+                                    $rc = runWorker($args, $workerOutput, $op === 'sign');
                                 } finally {
                                     flock($lockHandle, LOCK_UN);
                                 }
@@ -379,13 +384,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                     'name' => $base
                                 ];
 
-                                $notice = 'Verarbeitung abgeschlossen.';
+                                $notice = $op === 'sign'
+                                    ? 'PDF wurde erfolgreich signiert.'
+                                    : 'Verarbeitung abgeschlossen.';
                             } else {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
                             }
 
                         } elseif (!$error) {
-                            $error = 'PDF-Verarbeitung fehlgeschlagen: ' .
+                            $error = ($op === 'sign'
+                                ? 'PDF-Signierung fehlgeschlagen: '
+                                : 'PDF-Verarbeitung fehlgeschlagen: ') .
                                 ($workerOutput ?: 'Unbekannter Fehler');
                         }
                     }
@@ -531,12 +540,14 @@ $result = $_SESSION['result'] ?? null;
                 </div>
             </section>
 
-            <section class="tool-card tool-qes planned-card" aria-label="PDF-Signatur – in Planung">
+            <section class="tool-card tool-qes">
                 <div class="tool-icon">✍</div>
                 <div class="tool-content">
                     <h3>PDF signieren</h3>
-                    <p>PDF qualifiziert elektronisch signieren.</p>
-                    <span class="planned-tag">In Planung</span>
+                    <p>PDF mit der D-TRUST-Signaturkarte digital signieren.</p>
+                    <button class="task-button" type="submit" name="action" value="sign">
+                        PDF signieren
+                    </button>
                 </div>
             </section>
 
