@@ -374,3 +374,18 @@
     font-weight: 650;
 }
 .help-link:hover { text-decoration: underline; }
+
+
+/* Externe Signaturprüfung im Kopfbereich und Ergebnisanzeige */
+.signature-check-link { color:#2459a6; text-decoration:none; font-size:14px; font-weight:650; white-space:nowrap; }
+.signature-check-link:hover { text-decoration:underline; }
+.signature-result { max-width:1140px; margin:20px auto; padding:20px; background:#fff; border:1px solid #dbe3ed; border-radius:12px; box-shadow:0 5px 18px #1e293b0a; }
+.signature-result h3 { margin:0 0 12px; font-size:18px; }
+.signature-result dl { display:grid; grid-template-columns:minmax(170px, 240px) 1fr; gap:8px 18px; margin:14px 0 0; font-size:14px; }
+.signature-result dt { color:#64748b; }
+.signature-result dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
+.signature-status { font-weight:700; margin:0; }
+.signature-status.good { color:#237344; }
+.signature-status.bad,.signature-error { color:#a83228; }
+.signature-warning { margin:16px 0 0; padding:12px; border-radius:8px; background:#fff7e6; color:#805b16; font-size:13px; }
+@media(max-width:540px) { .signature-result { margin:16px 17px; } .signature-result dl { grid-template-columns:1fr; gap:3px; } .signature-result dd { margin-bottom:9px; } .header-actions { gap:10px; } .signature-check-link,.help-link,.logout { font-size:12px; } }
