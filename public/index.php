@@ -144,7 +144,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=17">
+        <link rel="stylesheet" href="/assets/style.css?v=18">
     </head>
     <body>
         <main class="login">
@@ -716,6 +716,14 @@ $result = $_SESSION['result'] ?? null;
 
         </div>
 
+
+
+        <p class="muted center processing-hint">
+            Bitte während der Verarbeitung das Fenster geöffnet lassen.
+        </p>
+
+    </form>
+
         <dialog id="tsa-dialog" class="settings-dialog" aria-labelledby="tsa-dialog-title">
             <form method="post" class="tsa-settings-form">
                 <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
@@ -743,19 +751,13 @@ $result = $_SESSION['result'] ?? null;
             </form>
         </dialog>
 
-        <p class="muted center processing-hint">
-            Bitte während der Verarbeitung das Fenster geöffnet lassen.
-        </p>
-
-    </form>
-
     <footer>
         PiPDFBox · Raspberry Pi · Dateien werden automatisch nach 24 Stunden gelöscht.
     </footer>
 
 </main>
 
-<script src="/assets/app.js?v=7"></script>
+<script src="/assets/app.js?v=8"></script>
 
 </body>
 </html>
