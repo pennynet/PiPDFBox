@@ -269,7 +269,15 @@ def _append_signature_page(
     else:
         box = (
             crop_urx - margin_x - stamp_height,
-            crop_ury - margin_y - stamdef _apply_signature_stamp(
+            crop_ury - margin_y - stamp_width,
+            crop_urx - margin_x,
+            crop_ury - margin_y,
+        )
+
+    return page_count, box
+
+
+def _apply_signature_stamp(
     writer: IncrementalPdfFileWriter,
     page_index: int,
     box: tuple[float, float, float, float],
@@ -368,12 +376,6 @@ Q
         dest_page=page_index,
         x=text_x,
         y=lly + stamp_height * 0.18,
-        coords=CoordinateSystem.PAGE_DEFAULT,
-    )
-y(
-        dest_page=page_index,
-        x=llx,
-        y=lly,
         coords=CoordinateSystem.PAGE_DEFAULT,
     )
 
