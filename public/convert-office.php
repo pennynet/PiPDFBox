@@ -48,12 +48,14 @@ if (!mkdir($tempDir, 0700, true)) {
     fail(500, 'Temporäres Verzeichnis konnte nicht angelegt werden.');
 }
 $cleanup = static function (string $dir): void {
-    foreach (glob($dir . '/*') ?: [] as $item) {
-        if (is_file($item)) @unlink($item);
-        elseif (is_dir($item)) {
-            foreach (glob($item . '/*') ?: [] as $nested) if (is_file($nested)) @unlink($nested);
-            @rmdir($item);
-        }
+    if (!is_dir($dir)) return;
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($iterator as $item) {
+        if ($item->isDir()) @rmdir($item->getPathname());
+        else @unlink($item->getPathname());
     }
     @rmdir($dir);
 };
