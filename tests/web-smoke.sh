@@ -215,7 +215,7 @@ login_code="$(
 assert_http "$login_code" "302" "Anmeldung mit CSRF-Token"
 
 curl -fsS -c "$COOKIE_FILE" -b "$COOKIE_FILE" "$BASE_URL/" -o "$TMP_DIR/app.html"
-grep -q "PDF-Dateien verarbeiten" "$TMP_DIR/app.html" || fail "Angemeldete Oberfläche fehlt."
+grep -q "PDF- oder Office-Dateien hier ablegen" "$TMP_DIR/app.html" || fail "Angemeldete Oberfläche fehlt."
 csrf="$(extract_csrf "$TMP_DIR/app.html")"
 
 run_upload_and_download() {
