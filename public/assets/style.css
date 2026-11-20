@@ -685,6 +685,20 @@
     background: #e0f2e5;
     color: #237344;
 }
+.pdf-chip-reuse {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    border: 0;
+    border-left: 1px solid #cfe5d5;
+    background: #e6f5e9;
+    color: #237344;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 700;
+}
+.pdf-chip-reuse:hover { background: #d4eedb; }
+.pdf-chip-reuse:disabled { opacity: .55; cursor: wait; }
 .pdf-chip-download {
     display: grid;
     place-items: center;
