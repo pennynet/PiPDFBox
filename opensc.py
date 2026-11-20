@@ -344,7 +344,7 @@ Q
         background=None,
         border_width=0,
         stamp_text=(
-            "qualifiziert elektronisch signiert von %(signer)s "
+            "Dokument qualifiziert elektronisch signiert von %(signer)s "
             "am %(ts)s"
         ),
         inner_content_layout=left_layout,
