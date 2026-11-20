@@ -2,6 +2,18 @@ const picker = document.getElementById('pdfs');
 const list = document.getElementById('filelist');
 const drop = document.getElementById('pdf-dropzone');
 const uploadPrompt = document.getElementById('upload-prompt');
+const handbookDialog = document.getElementById('handbook-dialog');
+const handbookFrame = document.getElementById('handbook-frame');
+document.getElementById('help-link')?.addEventListener('click', event => {
+    event.preventDefault();
+    handbookFrame.src = '/handbuch.php';
+    handbookDialog.showModal();
+});
+document.getElementById('handbook-close')?.addEventListener('click', () => handbookDialog.close());
+handbookDialog?.addEventListener('close', () => {
+    handbookFrame.src = 'about:blank';
+});
+
 const viewerDialog = document.getElementById('pdf-viewer-dialog');
 const viewerFrame = document.getElementById('pdf-viewer-frame');
 const viewerTitle = document.getElementById('pdf-viewer-title');
