@@ -114,6 +114,26 @@ function renderFiles() {
         download.title = 'Ergebnisdatei herunterladen';
         download.setAttribute('aria-label', 'Ergebnisdatei herunterladen');
         output.append(open, download);
+
+        if (list.dataset.resultAction === 'sign') {
+            const verify = document.createElement('button');
+            verify.type = 'button';
+            verify.className = 'pdf-chip-verify';
+            verify.textContent = '⋯';
+            verify.title = 'Signatur prüfen';
+            verify.setAttribute('aria-label', 'Signatur der Ausgabedatei prüfen');
+            verify.addEventListener('click', () => validateResultPdf());
+            output.appendChild(verify);
+        }
+
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'pdf-chip-remove';
+        remove.textContent = '×';
+        remove.title = 'Ausgabedatei löschen';
+        remove.setAttribute('aria-label', 'Ausgabedatei löschen');
+        remove.addEventListener('click', () => deleteResultFile(remove));
+        output.appendChild(remove);
         list.appendChild(output);
     }
 }
@@ -330,6 +350,50 @@ function showSignatureMessage(message, isError = false) {
     paragraph.className = isError ? 'signature-error' : '';
     paragraph.textContent = message;
     signatureResult.appendChild(paragraph);
+}
+
+async function validateResultPdf() {
+    signatureDialog.showModal();
+    showSignatureMessage('Signierte Ausgabedatei wird geladen …');
+    try {
+        const response = await fetch(list.dataset.resultUrl, {credentials:'same-origin', cache:'no-store'});
+        if (!response.ok) throw new Error('Ausgabedatei konnte nicht geladen werden.');
+        const blob = await response.blob();
+        const file = new File([blob], list.dataset.resultName || 'signiert.pdf', {type:'application/pdf'});
+        await validateSelectedPdf(file);
+    } catch (error) {
+        showSignatureMessage(error.message || 'Ausgabedatei konnte nicht geprüft werden.', true);
+    }
+}
+
+async function deleteResultFile(button) {
+    if (!window.confirm('Möchten Sie die Ausgabedatei wirklich löschen?')) return;
+    button.disabled = true;
+    try {
+        const body = new URLSearchParams({
+            job: list.dataset.resultJob || '',
+            file: list.dataset.resultFile || '',
+            csrf: list.dataset.resultCsrf || ''
+        });
+        const response = await fetch('/delete-result.php', {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body,
+            credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Ausgabedatei konnte nicht gelöscht werden.');
+        delete list.dataset.resultUrl;
+        delete list.dataset.resultName;
+        delete list.dataset.resultAction;
+        delete list.dataset.resultJob;
+        delete list.dataset.resultFile;
+        delete list.dataset.resultCsrf;
+        renderFiles();
+    } catch (error) {
+        button.disabled = false;
+        alert(error.message || 'Löschen fehlgeschlagen.');
+    }
 }
 
 async function validateSelectedPdf(selectedFile = null) {
