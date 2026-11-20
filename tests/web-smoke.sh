@@ -171,10 +171,10 @@ extract_download_path() {
 import re
 import sys
 html = open(sys.argv[1], encoding="utf-8").read()
-match = re.search(r'href="(/download\.php\?job=[a-f0-9]{32}&file=[A-Za-z0-9_.-]+)"', html)
+match = re.search(r'data-result-url="(/download\.php\?job=[a-f0-9]{32}&file=[A-Za-z0-9_.-]+)"', html)
 if not match:
     print(html[:4000], file=sys.stderr)
-    raise SystemExit("Ergebnis-Downloadlink fehlt")
+    raise SystemExit("Ergebnis-Download-URL fehlt")
 print(match.group(1))
 PY
 }
