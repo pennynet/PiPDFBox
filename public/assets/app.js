@@ -7,9 +7,11 @@ const viewerFrame = document.getElementById('pdf-viewer-frame');
 const viewerTitle = document.getElementById('pdf-viewer-title');
 let viewerUrl = null;
 let draggedIndex = null;
+let selectedFiles = [];
 
-function currentFiles() { return [...(picker.files || [])]; }
+function currentFiles() { return [...selectedFiles]; }
 function setFiles(files) {
+    selectedFiles = [...files];
     const transfer = new DataTransfer();
     files.forEach(file => transfer.items.add(file));
     picker.files = transfer.files;
