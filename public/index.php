@@ -373,9 +373,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             ? [$paths[0], $dir . '/signiert.pdf']
                             : [$op, $dir];
 
-                        if ($op === 'sign' && ($_POST['visible_stamp'] ?? '') === '1') {
-                            $args[] = '--visible-stamp';
-                            $args[] = '--tsa-url=' . $selectedTsaUrl;
+                        if ($op === 'sign') {
+                            if (($_POST['visible_stamp'] ?? '') === '1') {
+                                $args[] = '--visible-stamp';
+                            }
+                            if (($_POST['use_timestamp'] ?? '') === '1') {
+                                $args[] = '--timestamp';
+                                $args[] = '--tsa-url=' . $selectedTsaUrl;
+                            }
                         }
 
                         if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
@@ -687,7 +692,11 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Stempel und Zeitserver anfügen
+                        Sichtbaren Stempel anbringen
+                    </label>
+                    <label class="option-check">
+                        <input type="checkbox" name="use_timestamp" value="1" id="use_timestamp" checked>
+                        Zeitstempelserver nutzen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
@@ -811,7 +820,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=31"></script>
+<script src="/assets/app.js?v=32"></script>
 
 </body>
 </html>
