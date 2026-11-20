@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
+from datetime import datetime
 import subprocess
 import sys
 import tempfile
@@ -277,15 +278,21 @@ def _apply_signature_stamp(
 ) -> None:
     """Draw the standard pyHanko signature stamp into page content, not a widget."""
     llx, lly, urx, ury = box
+    signing_time = datetime.now(ZoneInfo("Europe/Berlin"))
+    timezone_name = "MESZ" if signing_time.dst() else "MEZ"
+    timestamp = f"{signing_time:%d.%m.%Y} um {signing_time:%H:%M} {timezone_name}"
+
     stamp_style = replace(
         DEFAULT_SIGNING_STAMP_STYLE,
-        stamp_text="qualifiziert elektronisch signiert von %(signer)s um: %(ts)s",
-        timestamp_format="%d.%m.%Y %H:%M Uhr",
+        stamp_text=(
+            "qualifiziert elektronisch signiert von %(signer)s\n"
+            "am %(ts)s"
+        ),
     )
     stamp = stamp_style.create_stamp(
         writer,
         BoxConstraints(width=urx - llx, height=ury - lly),
-        {"signer": signer_name or "D-TRUST"},
+        {"signer": signer_name or "D-TRUST", "ts": timestamp},
     )
     stamp.apply(
         dest_page=page_index,
