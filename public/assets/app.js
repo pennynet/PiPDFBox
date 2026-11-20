@@ -117,6 +117,11 @@ function renderFiles() {
         list.appendChild(output);
     }
 }
+
+// Beim Seitenaufbau ebenfalls rendern: Nach einem abgeschlossenen Auftrag
+// kommt das Ergebnis aus der PHP-Session und muss sofort als Chip erscheinen.
+renderFiles();
+
 function acceptFiles(incoming) {
     const existing = currentFiles();
     const additions = [...incoming].filter(file =>
