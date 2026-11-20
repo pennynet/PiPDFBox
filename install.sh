@@ -642,6 +642,16 @@ check_installation() {
 }
 
 
+install_sealium_key_support() {
+    install -o root -g root -m 750 "$APP_DIR/sealium-key-helper.sh" /usr/local/sbin/pipdfbox-set-sealium-key
+    cat > /etc/sudoers.d/pipdfbox-sealium <<'SUDOERS'
+www-data ALL=(root) NOPASSWD: /usr/local/sbin/pipdfbox-set-sealium-key ""
+SUDOERS
+    chmod 440 /etc/sudoers.d/pipdfbox-sealium
+    visudo -cf /etc/sudoers.d/pipdfbox-sealium >/dev/null
+    install -d -o root -g www-data -m 750 "$CONFIG_DIR"
+}
+
 install_cleanup_timer() {
     cat > /etc/systemd/system/pipdfbox-cleanup.service <<'EOF'
 [Unit]
