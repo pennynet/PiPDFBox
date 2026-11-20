@@ -777,3 +777,64 @@
     .pdf-file-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .pdf-chip { width: 100%; }
 }
+
+
+/* Integrierter ZIP-Dateibrowser */
+.zip-browser-dialog { display:none; }
+.zip-browser-dialog[open] { display:block; }
+.zip-browser-toolbar {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 14px;
+    border-bottom:1px solid #dbe3ed;
+    background:#f8fafc;
+}
+.zip-browser-toolbar span {
+    min-width:0;
+    overflow-wrap:anywhere;
+    color:#64748b;
+    font-size:13px;
+}
+.zip-browser-toolbar button:disabled { opacity:.45; cursor:default; }
+.zip-browser-list {
+    height:calc(100% - 105px);
+    overflow:auto;
+    padding:12px 16px;
+    background:#fff;
+}
+.zip-entry { border-bottom:1px solid #edf1f5; }
+.zip-entry-open {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    width:100%;
+    padding:12px 8px;
+    border:0;
+    background:transparent;
+    color:#26364a;
+    text-align:left;
+    cursor:pointer;
+}
+.zip-entry-open:hover { background:#f1f6fc; }
+.zip-entry-icon {
+    display:grid;
+    place-items:center;
+    flex:0 0 36px;
+    width:36px;
+    height:36px;
+    border-radius:8px;
+    background:#eef3f9;
+    color:#365b85;
+    font-size:11px;
+    font-weight:750;
+}
+.zip-entry-name { flex:1; min-width:0; overflow-wrap:anywhere; font-size:14px; }
+.zip-entry-size { flex:0 0 auto; color:#8491a2; font-size:12px; }
+.zip-browser-message { padding:20px 8px; color:#718096; text-align:center; }
+.zip-browser-error { color:#a83228; }
+@media(max-width:540px) {
+    .zip-browser-toolbar { align-items:flex-start; flex-direction:column; gap:8px; }
+    .zip-browser-list { height:calc(100% - 140px); padding:8px; }
+    .zip-entry-open { gap:8px; padding:10px 4px; }
+}
