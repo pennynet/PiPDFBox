@@ -2,6 +2,14 @@
 
 Alle wesentlichen Änderungen an PiPDFBox werden hier dokumentiert.
 
+## Unveröffentlicht
+
+### PDF-Signierung
+- D-TRUST-PDF-Signierung über einen eigenständigen OpenSC-/pyHanko-Worker ergänzt
+- Signierfunktion in die Weboberfläche integriert
+- Installer baut OpenSC 0.27.1 und installiert pyHanko 0.38.2 ohne virtuelle Python-Umgebung
+- Signatur-PIN bleibt auf dem geschützten PIN-Pad des Kartenlesers
+
 ## [1.0.0] – 2026-11-17
 
 Erste stabile Version.
