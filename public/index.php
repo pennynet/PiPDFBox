@@ -499,7 +499,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=33">
+    <link rel="stylesheet" href="/assets/style.css?v=34">
 </head>
 <body>
 
@@ -798,7 +798,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=22"></script>
+<script src="/assets/app.js?v=23"></script>
 
 </body>
 </html>
