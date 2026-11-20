@@ -40,7 +40,7 @@ if ($signature !== '%PDF-' || !in_array($mime, ['application/pdf', 'application/
 
 $keyFile = '/etc/pipdfbox/sealium.key';
 if (!is_readable($keyFile)) {
-    respond(503, ['error' => 'Sealium-API-Key fehlt oder ist für den Webserver nicht lesbar. Bitte Schlüsselrechte gemäß PiPDFBox-Hinweis setzen.']);
+    respond(503, ['error' => 'Sealium-API-Key fehlt oder ist für den Webserver nicht lesbar. Bitte den API-Schlüssel unter Einstellungen hinterlegen.']);
 }
 $key = trim((string)file_get_contents($keyFile));
 if ($key === '' || preg_match('/[\r\n"]/', $key)) {
