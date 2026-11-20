@@ -125,6 +125,7 @@ REQUIRED_PACKAGES=(
     iproute2
     pcscd
     libccid
+    libifd-cyberjack6
     libpcsclite-dev
     libssl-dev
     libreadline-dev
