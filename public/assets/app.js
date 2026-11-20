@@ -626,10 +626,17 @@ const zipList = document.getElementById('zip-browser-list');
 const zipTitle = document.getElementById('zip-browser-title');
 const zipPathLabel = document.getElementById('zip-browser-path');
 const zipUp = document.getElementById('zip-browser-up');
+const zipImport = document.getElementById('zip-browser-import');
 let zipCurrentPath = '';
+const zipSelectedPdfs = new Set();
 
 function zipJoinPath(base, name) {
     return (base ? base.replace(/\/$/, '') + '/' : '') + name;
+}
+function updateZipImportButton() {
+    if (!zipImport) return;
+    zipImport.disabled = zipSelectedPdfs.size === 0;
+    zipImport.textContent = 'Auswahl übernehmen (' + zipSelectedPdfs.size + ')';
 }
 async function loadZipDirectory(path = '') {
     zipCurrentPath = path;
@@ -686,6 +693,34 @@ async function loadZipDirectory(path = '') {
                 }
             });
             row.appendChild(openEntry);
+
+            const entryPath = zipJoinPath(zipCurrentPath, entry.name);
+            if (!entry.directory && entry.name.toLowerCase().endsWith('.pdf')) {
+                const actions = document.createElement('div');
+                actions.className = 'zip-entry-actions';
+                const download = document.createElement('button');
+                download.type = 'button';
+                download.className = 'zip-entry-download';
+                download.textContent = '↓';
+                download.title = 'PDF herunterladen';
+                download.setAttribute('aria-label', entry.name + ' herunterladen');
+                download.addEventListener('click', () => downloadZipEntry(entryPath));
+                const label = document.createElement('label');
+                label.className = 'zip-entry-select';
+                label.title = 'PDF zur Weiterverarbeitung auswählen';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = zipSelectedPdfs.has(entryPath);
+                checkbox.setAttribute('aria-label', entry.name + ' auswählen');
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) zipSelectedPdfs.add(entryPath);
+                    else zipSelectedPdfs.delete(entryPath);
+                    updateZipImportButton();
+                });
+                label.appendChild(checkbox);
+                actions.append(download, label);
+                row.appendChild(actions);
+            }
             zipList.appendChild(row);
         });
     } catch (error) {
@@ -722,9 +757,39 @@ function downloadZipEntry(path) {
     link.click();
     link.remove();
 }
+async function importSelectedZipPdfs() {
+    if (!zipSelectedPdfs.size) return;
+    if (currentFiles().length + zipSelectedPdfs.size > 100) {
+        alert('Maximal 100 PDF-Dateien pro Auftrag.');
+        return;
+    }
+    zipImport.disabled = true;
+    const originalText = zipImport.textContent;
+    zipImport.textContent = 'PDF-Dateien werden übernommen …';
+    try {
+        const files = [];
+        for (const path of zipSelectedPdfs) {
+            const blob = await fetchZipEntry(path);
+            files.push(new File([blob], path.split('/').pop() || 'Dokument.pdf', {
+                type:'application/pdf', lastModified:Date.now()
+            }));
+        }
+        acceptFiles(files);
+        zipSelectedPdfs.clear();
+        updateZipImportButton();
+        zipDialog.close();
+    } catch (error) {
+        alert(error.message || 'Ausgewählte PDF-Dateien konnten nicht übernommen werden.');
+    } finally {
+        zipImport.textContent = originalText;
+        updateZipImportButton();
+    }
+}
 function openZipBrowser() {
     if (!zipDialog || !list.dataset.resultJob || !list.dataset.resultFile) return;
     zipTitle.textContent = list.dataset.resultName;
+    zipSelectedPdfs.clear();
+    updateZipImportButton();
     zipDialog.showModal();
     loadZipDirectory('');
 }
@@ -733,4 +798,5 @@ zipUp?.addEventListener('click', () => {
     parts.pop();
     loadZipDirectory(parts.join('/'));
 });
+zipImport?.addEventListener('click', importSelectedZipPdfs);
 document.getElementById('zip-browser-close')?.addEventListener('click', () => zipDialog.close());
