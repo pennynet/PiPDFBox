@@ -596,7 +596,7 @@ $result = $_SESSION['result'] ?? null;
     <nav class="header-actions">
         <a class="settings-link" href="#" id="settings-link">Einstellungen</a>
         <a class="signature-check-link" href="#" id="signature-check-link">Signatur prüfen</a>
-        <a class="help-link" href="/handbuch.php" target="_blank" rel="noopener noreferrer">Hilfe</a>
+        <a class="help-link" href="#" id="help-link">Hilfe</a>
         <a class="logout" href="/?logout=1">Abmelden</a>
     </nav>
 </header>
@@ -703,6 +703,14 @@ $result = $_SESSION['result'] ?? null;
                 <span class="pdf-empty">Noch keine Dateien ausgewählt</span>
             </div>
         </div>
+
+        <dialog id="handbook-dialog" class="pdf-viewer-dialog" aria-labelledby="handbook-title">
+            <div class="pdf-viewer-head">
+                <strong id="handbook-title">PiPDFBox – Handbuch</strong>
+                <button type="button" class="dialog-cancel" id="handbook-close">Schließen</button>
+            </div>
+            <iframe id="handbook-frame" title="PiPDFBox-Handbuch" src="about:blank"></iframe>
+        </dialog>
 
         <dialog id="pdf-viewer-dialog" class="pdf-viewer-dialog">
             <div class="pdf-viewer-head">
@@ -934,7 +942,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=43"></script>
+<script src="/assets/app.js?v=44"></script>
 
 </body>
 </html>
