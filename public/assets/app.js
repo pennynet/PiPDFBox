@@ -379,59 +379,73 @@ filenamePrefixDialog?.addEventListener('click', event => {
 });
 
 let bypassSignedPdfWarning = false;
-document.querySelector('form.panel').addEventListener('submit', async event => {
-    const button = event.submitter || document.activeElement;
-    if (!bypassSignedPdfWarning && button?.classList.contains('task-button')) {
-        const files = currentFiles();
-        let hasSignedPdf = false;
-        for (const file of files) {
+let pendingSignedPdfSubmitter = null;
+const signedPdfWarningDialog = document.getElementById('signed-pdf-warning-dialog');
+document.getElementById('signed-pdf-warning-cancel')?.addEventListener('click', () => {
+    signedPdfWarningDialog?.close();
+    pendingSignedPdfSubmitter = null;
+    bypassSignedPdfWarning = false;
+});
+document.getElementById('signed-pdf-warning-confirm')?.addEventListener('click', () => {
+    signedPdfWarningDialog?.close();
+    const button = pendingSignedPdfSubmitter;
+    pendingSignedPdfSubmitter = null;
+    bypassSignedPdfWarning = true;
+    if (button) continueTaskSubmission(button);
+});
+
+async function continueTaskSubmission(button) {
+    const form = document.querySelector('form.panel');
+    if (!bypassSignedPdfWarning) {
+        for (const file of currentFiles()) {
             if ((file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) && await pdfHasSignature(file)) {
-                hasSignedPdf = true;
-                break;
+                pendingSignedPdfSubmitter = button;
+                signedPdfWarningDialog?.showModal();
+                return;
             }
         }
-        if (hasSignedPdf) {
-            event.preventDefault();
-            if (!window.confirm('Bei der Weiterverarbeitung wird die Signatur ungültig!')) return;
-            bypassSignedPdfWarning = true;
-            event.currentTarget.requestSubmit(button);
-            return;
-        }
     }
-    if (!bypassFilenamePrefixPrompt && event.currentTarget.dataset.filenameMode === 'date_prefix' && button?.classList.contains('task-button')) {
-        event.preventDefault();
+    if (!bypassFilenamePrefixPrompt && form.dataset.filenameMode === 'date_prefix') {
         pendingFilenameSubmitter = button;
         if (filenamePrefixInput) filenamePrefixInput.value = '';
         filenamePrefixDialog?.showModal();
         filenamePrefixInput?.focus();
         return;
     }
+
     bypassFilenamePrefixPrompt = false;
-    // Warnung erst nach eventuell vorgeschaltetem Dateinamen-Dialog zurücksetzen.
     bypassSignedPdfWarning = false;
-    if (button && button.value === 'sign') {
+    if (button.value === 'sign') {
         const files = currentFiles();
         if (files.length === 0) {
-            event.preventDefault();
             alert('Bitte zuerst eine PDF-Datei auswählen.');
             return;
         }
         if (files.length > 2) {
-            event.preventDefault();
             signLimitDialog.showModal();
             return;
         }
     }
     const result = document.querySelector('.result');
     if (result) result.remove();
-    if (button && button.classList.contains('task-button')) {
-        const action = document.createElement('input');
-        action.type = 'hidden'; action.name = 'action'; action.value = button.value;
-        button.form.appendChild(action);
-        const success = document.querySelector('.success');
-        if (success) success.textContent = 'Verarbeitung läuft …';
-        button.disabled = true; button.textContent = 'Verarbeitung läuft …';
-    }
+    const action = document.createElement('input');
+    action.type = 'hidden';
+    action.name = 'action';
+    action.value = button.value;
+    form.appendChild(action);
+    const success = document.querySelector('.success');
+    if (success) success.textContent = 'Verarbeitung läuft …';
+    button.disabled = true;
+    button.textContent = 'Verarbeitung läuft …';
+    form.submit();
+}
+
+document.querySelector('form.panel').addEventListener('submit', event => {
+    const button = event.submitter || document.activeElement;
+    if (!button?.classList.contains('task-button')) return;
+    // Sofort verhindern: Ein async-Handler darf erst nach dem await preventDefault() aufrufen.
+    event.preventDefault();
+    continueTaskSubmission(button);
 });
 
 const visibleStampCheckbox = document.getElementById('visible_stamp');
