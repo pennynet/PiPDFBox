@@ -570,9 +570,7 @@
     box-shadow: 0 1px 3px #1e293b0a;
 }
 .pdf-chip.dragging {
-    position: absolute;
-    visibility: hidden;
-    pointer-events: none;
+    opacity: .45;
 }
 .pdf-chip.drag-over { outline: 2px solid #3975c7; outline-offset: 1px; }
 .pdf-chip-open {
