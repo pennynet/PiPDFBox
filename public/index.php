@@ -800,7 +800,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=18"></script>
+<script src="/assets/app.js?v=19"></script>
 
 </body>
 </html>
