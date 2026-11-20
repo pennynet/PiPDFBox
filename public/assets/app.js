@@ -348,6 +348,7 @@ const filenamePrefixInput = document.getElementById('filename-prefix-input');
 document.getElementById('filename-prefix-cancel')?.addEventListener('click', () => {
     filenamePrefixDialog?.close();
     pendingFilenameSubmitter = null;
+    bypassSignedPdfWarning = false;
 });
 document.getElementById('filename-prefix-confirm')?.addEventListener('click', () => {
     const prefix = filenamePrefixInput?.value.trim() || '';
@@ -375,6 +376,7 @@ filenamePrefixDialog?.addEventListener('click', event => {
     if (event.target === filenamePrefixDialog) {
         filenamePrefixDialog.close();
         pendingFilenameSubmitter = null;
+        bypassSignedPdfWarning = false;
     }
 });
 
