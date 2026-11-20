@@ -35,6 +35,7 @@ from pyhanko.pdf_utils.layout import (
 )
 from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import signers
+from pyhanko.sign.timestamps import HTTPTimeStamper
 from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
 from pyhanko.stamp.appearances import CoordinateSystem
 
@@ -426,7 +427,19 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                pdf_signer = signers.PdfSigner(metadata, external_signer)
+                # Den RFC-3161-Zeitstempel nur anfordern, wenn der vorhandene
+                # sichtbare Stempel aktiviert wurde. Ohne Stempel bleibt der
+                # bisherige Signaturablauf unverändert.
+                timestamper = (
+                    HTTPTimeStamper("http://tsa2.baltstamp.lt")
+                    if visible_stamp
+                    else None
+                )
+                pdf_signer = signers.PdfSigner(
+                    metadata,
+                    external_signer,
+                    timestamper=timestamper,
+                )
                 with output_pdf.open("xb") as destination:
                     created_output = True
                     pdf_signer.sign_pdf(writer, output=destination)
