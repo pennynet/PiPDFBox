@@ -335,6 +335,16 @@ const sealiumKey = document.getElementById('sealium-api-key');
 const sealiumStatus = document.getElementById('sealium-key-status');
 const sealiumMessage = document.getElementById('sealium-settings-message');
 const sealiumSaveButton = document.getElementById('sealium-save-button');
+const filenameDialog = document.getElementById('filename-dialog');
+document.getElementById('open-filename-settings')?.addEventListener('click', () => {
+    settingsMenu?.close();
+    filenameDialog?.showModal();
+});
+document.getElementById('filename-dialog-cancel')?.addEventListener('click', () => filenameDialog?.close());
+filenameDialog?.addEventListener('click', event => {
+    if (event.target === filenameDialog) filenameDialog.close();
+});
+
 
 async function loadSealiumStatus() {
     try {
