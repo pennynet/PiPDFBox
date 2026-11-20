@@ -289,8 +289,55 @@ viewerDialog?.addEventListener('close', () => {
 const signLimitDialog = document.getElementById('sign-limit-dialog');
 document.getElementById('sign-limit-close')?.addEventListener('click', () => signLimitDialog.close());
 
+let pendingFilenameSubmitter = null;
+let bypassFilenamePrefixPrompt = false;
+const filenamePrefixDialog = document.getElementById('filename-prefix-dialog');
+const filenamePrefixInput = document.getElementById('filename-prefix-input');
+document.getElementById('filename-prefix-cancel')?.addEventListener('click', () => {
+    filenamePrefixDialog?.close();
+    pendingFilenameSubmitter = null;
+});
+document.getElementById('filename-prefix-confirm')?.addEventListener('click', () => {
+    const prefix = filenamePrefixInput?.value.trim() || '';
+    if (!prefix) {
+        filenamePrefixInput?.setCustomValidity('Bitte einen Prefix eingeben.');
+        filenamePrefixInput?.reportValidity();
+        return;
+    }
+    filenamePrefixInput?.setCustomValidity('');
+    const form = document.querySelector('form.panel');
+    let hidden = form.querySelector('input[name="filename_prefix"]');
+    if (!hidden) {
+        hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'filename_prefix';
+        form.appendChild(hidden);
+    }
+    hidden.value = prefix;
+    filenamePrefixDialog.close();
+    bypassFilenamePrefixPrompt = true;
+    form.requestSubmit(pendingFilenameSubmitter || undefined);
+    pendingFilenameSubmitter = null;
+});
+filenamePrefixDialog?.addEventListener('click', event => {
+    if (event.target === filenamePrefixDialog) {
+        filenamePrefixDialog.close();
+        pendingFilenameSubmitter = null;
+    }
+});
+
 document.querySelector('form.panel').addEventListener('submit', event => {
     const button = event.submitter || document.activeElement;
+    const button = event.submitter || document.activeElement;
+    if (!bypassFilenamePrefixPrompt && event.currentTarget.dataset.filenameMode === 'date_prefix' && button?.classList.contains('task-button')) {
+        event.preventDefault();
+        pendingFilenameSubmitter = button;
+        if (filenamePrefixInput) filenamePrefixInput.value = '';
+        filenamePrefixDialog?.showModal();
+        filenamePrefixInput?.focus();
+        return;
+    }
+    bypassFilenamePrefixPrompt = false;
     if (button && button.value === 'sign') {
         const files = currentFiles();
         if (files.length === 0) {
