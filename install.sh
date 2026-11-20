@@ -806,7 +806,7 @@ main() {
     while true; do
         echo
         echo "================================"
-        echo "             PiPDFBox Version $VERSION"
+        echo "   PiPDFBox Version $VERSION"
         echo "================================"
         echo "Quelle: GitHub (pennynet/PiPDFBox, main)"
         echo "1) Neuinstallation / Einrichtung"
