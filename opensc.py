@@ -341,6 +341,10 @@ Q
 
     stamp_style = replace(
         DEFAULT_SIGNING_STAMP_STYLE,
+        text_box_style=replace(
+            DEFAULT_SIGNING_STAMP_STYLE.text_box_style,
+            font_size=12,
+        ),
         background=None,
         border_width=0,
         stamp_text=(
