@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 # pyHanko and its pinned runtime dependencies are installed here by install.sh.
 PACKAGE_DIR = Path("/opt/pipdfbox/python")
@@ -390,7 +391,8 @@ class OpenSCPdfSigner:
             ) from exc
 
     def sign_pdf(
-        self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False
+        self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False,
+        tsa_url: str = "http://tsa2.baltstamp.lt",
     ) -> Path:
         if not input_pdf.is_file():
             raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
@@ -431,7 +433,7 @@ class OpenSCPdfSigner:
                 # sichtbare Stempel aktiviert wurde. Ohne Stempel bleibt der
                 # bisherige Signaturablauf unverändert.
                 timestamper = (
-                    HTTPTimeStamper("http://tsa2.baltstamp.lt")
+                    HTTPTimeStamper(tsa_url)
                     if visible_stamp
                     else None
                 )
@@ -457,18 +459,39 @@ class OpenSCPdfSigner:
 
 
 def main() -> int:
-    if len(sys.argv) not in (3, 4) or (
-        len(sys.argv) == 4 and sys.argv[3] != "--visible-stamp"
-    ):
+    if len(sys.argv) < 3:
         print(
-            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp]",
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp] [--tsa-url=URL]",
             file=sys.stderr,
         )
         return 2
 
     input_pdf = Path(sys.argv[1]).resolve()
     output_pdf = Path(sys.argv[2]).resolve()
-    visible_stamp = len(sys.argv) == 4
+    options = sys.argv[3:]
+    visible_stamp = "--visible-stamp" in options
+    tsa_options = [arg[len("--tsa-url="):] for arg in options if arg.startswith("--tsa-url=")]
+    unknown_options = [
+        arg for arg in options
+        if arg != "--visible-stamp" and not arg.startswith("--tsa-url=")
+    ]
+    if unknown_options or len(tsa_options) > 1:
+        print("Ungültige Signieroption.", file=sys.stderr)
+        return 2
+    tsa_url = tsa_options[0] if tsa_options else "http://tsa2.baltstamp.lt"
+    parsed_tsa_url = urlparse(tsa_url)
+    if (
+        parsed_tsa_url.scheme not in ("http", "https")
+        or not parsed_tsa_url.hostname
+        or parsed_tsa_url.username is not None
+        or parsed_tsa_url.password is not None
+        or parsed_tsa_url.fragment
+    ):
+        print("Ungültige Zeitserver-URL.", file=sys.stderr)
+        return 2
+    if not visible_stamp and tsa_options:
+        print("Ein Zeitserver kann nur mit --visible-stamp angegeben werden.", file=sys.stderr)
+        return 2
 
     try:
         if not input_pdf.is_file():
@@ -478,7 +501,7 @@ def main() -> int:
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
         signed_pdf = signer.sign_pdf(
-            input_pdf, output_pdf, visible_stamp=visible_stamp
+            input_pdf, output_pdf, visible_stamp=visible_stamp, tsa_url=tsa_url
         )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
