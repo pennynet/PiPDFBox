@@ -521,10 +521,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 } else {
                                     $newBase = date('ymd') . '-' . $safeStem . ($extension !== '' ? '.' . $extension : '');
                                 }
-                                if (!rename($dir . '/' . $base, $dir . '/' . $newBase)) {
-                                    $error = 'Ausgabedatei konnte nicht umbenannt werden.';
-                                } else {
-                                    $base = $newBase;
+                                if (!$error && isset($newBase)) {
+                                    if (!rename($dir . '/' . $base, $dir . '/' . $newBase)) {
+                                        $error = 'Ausgabedatei konnte nicht umbenannt werden.';
+                                    } else {
+                                        $base = $newBase;
+                                    }
                                 }
                             }
 
@@ -544,7 +546,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $notice = $op === 'sign'
                                     ? 'PDF wurde erfolgreich signiert.'
                                     : 'Verarbeitung abgeschlossen.';
-                            } else {
+                            } elseif (!$error) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
                             }
 
