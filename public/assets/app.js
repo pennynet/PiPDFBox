@@ -140,32 +140,35 @@ viewerDialog?.addEventListener('close', () => {
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
     viewerUrl = null;
 });
-document.querySelector('form.panel').addEventListener('submit', (event) => {
-    const b = event.submitter || document.activeElement;
-    const result = document.querySelector('.result');
-
-    if (result) {
-        result.style.display = 'none';
-        result.remove();
-    }
-
-    if (b && b.classList.contains('task-button')) {
-        const action = document.createElement('input');
-        action.type = 'hidden';
-        action.name = 'action';
-        action.value = b.value;
-        b.form.appendChild(action);
-
-        const success = document.querySelector('.success');
-        if (success) {
-            success.textContent = 'Verarbeitung läuft …';
+let signConfirmed = false;
+document.querySelector('form.panel').addEventListener('submit', event => {
+    const button = event.submitter || document.activeElement;
+    if (button && button.value === 'sign' && !signConfirmed) {
+        const files = currentFiles();
+        if (files.length !== 1) {
+            event.preventDefault();
+            alert(files.length === 0 ? 'Bitte zuerst genau eine PDF-Datei auswählen.' : 'Es kann immer nur eine PDF-Datei gleichzeitig signiert werden. Bitte wählen Sie genau eine Datei aus.');
+            return;
         }
-
-        b.disabled = true;
-        b.textContent = 'Verarbeitung läuft …';
+        event.preventDefault();
+        const file = files[0];
+        const size = (file.size / 1024 / 1024).toLocaleString('de-DE', {maximumFractionDigits: 2});
+        if (!window.confirm('Soll diese Datei jetzt qualifiziert elektronisch signiert werden?\n\n' + file.name + ' (' + size + ' MB)\n\nBitte prüfen Sie, ob dies die richtige Datei ist.')) return;
+        signConfirmed = true;
+        event.currentTarget.requestSubmit(button);
+        return;
+    }
+    const result = document.querySelector('.result');
+    if (result) result.remove();
+    if (button && button.classList.contains('task-button')) {
+        const action = document.createElement('input');
+        action.type = 'hidden'; action.name = 'action'; action.value = button.value;
+        button.form.appendChild(action);
+        const success = document.querySelector('.success');
+        if (success) success.textContent = 'Verarbeitung läuft …';
+        button.disabled = true; button.textContent = 'Verarbeitung läuft …';
     }
 });
-
 
 const visibleStampCheckbox = document.getElementById('visible_stamp');
 const tsaLinkWrap = document.getElementById('tsa-link-wrap');
@@ -292,12 +295,12 @@ function showSignatureMessage(message, isError = false) {
     signatureResult.appendChild(paragraph);
 }
 
-async function validateSelectedPdf() {
-    const files = [...(pdfPicker.files || [])];
+async function validateSelectedPdf(selectedFile = null) {
+    const files = selectedFile ? [selectedFile] : currentFiles();
     if (files.length !== 1) {
         signatureDialog.showModal();
         showSignatureMessage(files.length === 0
-            ? 'Bitte zuerst eine PDF in das große Hochladefeld ziehen oder dort auswählen.'
+            ? 'Bitte zuerst eine PDF-Datei auswählen.'
             : 'Für die Signaturprüfung bitte genau eine PDF im Hochladefeld auswählen.', true);
         return;
     }
