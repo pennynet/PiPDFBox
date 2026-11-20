@@ -21,12 +21,11 @@ function renderFiles() {
     const files = currentFiles();
     list.replaceChildren();
     uploadPrompt.hidden = files.length > 0;
-    if (!files.length) {
+    if (!files.length && !list.dataset.resultUrl) {
         const empty = document.createElement('span');
         empty.className = 'pdf-empty';
         empty.textContent = 'Noch keine Dateien ausgewählt';
         list.appendChild(empty);
-        return;
     }
     files.forEach((file, index) => {
         const chip = document.createElement('div');
@@ -93,6 +92,30 @@ function renderFiles() {
         });
         list.appendChild(chip);
     });
+    if (list.dataset.resultUrl) {
+        const output = document.createElement('div');
+        output.className = 'pdf-chip pdf-chip-result';
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'pdf-chip-open';
+        open.title = list.dataset.resultName + ' – Ergebnis öffnen';
+        const icon = document.createElement('span');
+        icon.className = 'pdf-chip-icon';
+        icon.textContent = 'PDF';
+        const name = document.createElement('span');
+        name.className = 'pdf-chip-name';
+        name.textContent = list.dataset.resultName;
+        open.append(icon, name);
+        open.addEventListener('click', () => openPdf(list.dataset.resultUrl, list.dataset.resultName));
+        const download = document.createElement('a');
+        download.className = 'pdf-chip-download';
+        download.href = list.dataset.resultUrl;
+        download.textContent = '↓';
+        download.title = 'Ergebnisdatei herunterladen';
+        download.setAttribute('aria-label', 'Ergebnisdatei herunterladen');
+        output.append(open, download);
+        list.appendChild(output);
+    }
 }
 function acceptFiles(incoming) {
     const existing = currentFiles();
@@ -129,17 +152,17 @@ drop.addEventListener('drop', event => {
     event.preventDefault();
     acceptFiles(event.dataTransfer.files);
 });
-function openPdf(file) {
-    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
-    viewerUrl = URL.createObjectURL(file);
-    viewerTitle.textContent = file.name;
+function openPdf(fileOrUrl, name = '') {
+    if (viewerUrl && viewerUrl.startsWith('blob:')) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = typeof fileOrUrl === 'string' ? fileOrUrl : URL.createObjectURL(fileOrUrl);
+    viewerTitle.textContent = typeof fileOrUrl === 'string' ? name : fileOrUrl.name;
     viewerFrame.src = viewerUrl;
     viewerDialog.showModal();
 }
 document.getElementById('pdf-viewer-close')?.addEventListener('click', () => viewerDialog.close());
 viewerDialog?.addEventListener('close', () => {
     viewerFrame.src = 'about:blank';
-    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    if (viewerUrl && viewerUrl.startsWith('blob:')) URL.revokeObjectURL(viewerUrl);
     viewerUrl = null;
 });
 let signConfirmed = false;
