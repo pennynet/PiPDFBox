@@ -6,4 +6,7 @@ if (!preg_match('/^[a-f0-9]{32}$/',$job) || !preg_match('/^[A-Za-z0-9_.-]+$/',$f
 $path=$cfg['data_dir'].'/jobs/'.$job.'/'.$file;
 if (!is_file($path) || !str_starts_with(realpath($path),realpath($cfg['data_dir'].'/jobs/'.$job).DIRECTORY_SEPARATOR)) { http_response_code(404); exit('Datei nicht gefunden.'); }
 header('Content-Type: '.(str_ends_with(strtolower($file),'.zip')?'application/zip':'application/pdf'));
-header('Content-Length: '.filesize($path)); header('Content-Disposition: attachment; filename="'.basename($file).'"'); header('X-Content-Type-Options: nosniff'); readfile($path);
+header('Content-Length: '.filesize($path));
+$disposition = (($_GET['inline'] ?? '') === '1' && str_ends_with(strtolower($file), '.pdf')) ? 'inline' : 'attachment';
+header('Content-Disposition: '.$disposition.'; filename="'.basename($file).'"');
+header('X-Content-Type-Options: nosniff'); readfile($path);
