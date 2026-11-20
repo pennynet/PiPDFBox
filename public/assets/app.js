@@ -159,14 +159,19 @@ function renderFiles() {
         open.type = 'button';
         open.className = 'pdf-chip-open';
         open.title = list.dataset.resultName + ' – Ergebnis öffnen';
+        const isZip = list.dataset.resultName.toLowerCase().endsWith('.zip');
         const icon = document.createElement('span');
         icon.className = 'pdf-chip-icon';
-        icon.textContent = 'PDF';
+        icon.textContent = isZip ? 'ZIP' : 'PDF';
         const name = document.createElement('span');
         name.className = 'pdf-chip-name';
         name.textContent = list.dataset.resultName;
         open.append(icon, name);
-        open.addEventListener('click', () => openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName));
+        open.title = list.dataset.resultName + (isZip ? ' – ZIP-Inhalt anzeigen' : ' – Ergebnis öffnen');
+        open.addEventListener('click', () => {
+            if (isZip) openZipBrowser();
+            else openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName);
+        });
         const reuse = document.createElement('button');
         reuse.type = 'button';
         reuse.className = 'pdf-chip-reuse';
@@ -612,3 +617,119 @@ if (signatureLink && signatureResult && signatureDialog && pdfPicker) {
         if (event.target === signatureDialog) signatureDialog.close();
     });
 }
+
+
+/* ZIP-Ergebnis im integrierten Dateibrowser anzeigen. */
+const zipDialog = document.getElementById('zip-browser-dialog');
+const zipList = document.getElementById('zip-browser-list');
+const zipTitle = document.getElementById('zip-browser-title');
+const zipPathLabel = document.getElementById('zip-browser-path');
+const zipUp = document.getElementById('zip-browser-up');
+let zipCurrentPath = '';
+
+function zipJoinPath(base, name) {
+    return (base ? base.replace(/\/$/, '') + '/' : '') + name;
+}
+async function loadZipDirectory(path = '') {
+    zipCurrentPath = path;
+    zipList.replaceChildren();
+    zipPathLabel.textContent = '/' + path;
+    zipUp.disabled = !path;
+    const loading = document.createElement('p');
+    loading.className = 'zip-browser-message';
+    loading.textContent = 'Inhalt wird geladen …';
+    zipList.appendChild(loading);
+    try {
+        const url = '/zip-content.php?mode=list&job=' + encodeURIComponent(list.dataset.resultJob)
+            + '&file=' + encodeURIComponent(list.dataset.resultFile)
+            + '&path=' + encodeURIComponent(path);
+        const response = await fetch(url, {credentials:'same-origin', cache:'no-store'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'ZIP-Inhalt konnte nicht gelesen werden.');
+        zipList.replaceChildren();
+        if (!data.entries.length) {
+            const empty = document.createElement('p');
+            empty.className = 'zip-browser-message';
+            empty.textContent = 'Dieser Ordner ist leer.';
+            zipList.appendChild(empty);
+        }
+        data.entries.forEach(entry => {
+            const row = document.createElement('div');
+            row.className = 'zip-entry';
+            const openEntry = document.createElement('button');
+            openEntry.type = 'button';
+            openEntry.className = 'zip-entry-open';
+            const entryIcon = document.createElement('span');
+            entryIcon.className = 'zip-entry-icon';
+            entryIcon.textContent = entry.directory ? '📁' : (entry.name.toLowerCase().endsWith('.pdf') ? 'PDF' : '📄');
+            const entryName = document.createElement('span');
+            entryName.className = 'zip-entry-name';
+            entryName.textContent = entry.name;
+            const entrySize = document.createElement('span');
+            entrySize.className = 'zip-entry-size';
+            entrySize.textContent = entry.directory ? 'Ordner' : formatZipSize(entry.size);
+            openEntry.append(entryIcon, entryName, entrySize);
+            openEntry.addEventListener('click', async () => {
+                const entryPath = zipJoinPath(zipCurrentPath, entry.name);
+                if (entry.directory) {
+                    loadZipDirectory(entryPath);
+                } else if (entry.name.toLowerCase().endsWith('.pdf')) {
+                    try {
+                        const blob = await fetchZipEntry(entryPath);
+                        openPdf(new File([blob], entry.name, {type:'application/pdf'}));
+                    } catch (error) {
+                        alert(error.message);
+                    }
+                } else {
+                    downloadZipEntry(entryPath);
+                }
+            });
+            row.appendChild(openEntry);
+            zipList.appendChild(row);
+        });
+    } catch (error) {
+        zipList.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'zip-browser-message zip-browser-error';
+        message.textContent = error.message || 'ZIP-Inhalt konnte nicht geladen werden.';
+        zipList.appendChild(message);
+    }
+}
+function formatZipSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return '';
+    if (bytes < 1024) return bytes + ' B';
+    const units = ['KB','MB','GB'];
+    let size = bytes / 1024, unit = units[0];
+    for (let i=1; size >= 1024 && i<units.length; i++) { size /= 1024; unit=units[i]; }
+    return size.toLocaleString('de-DE',{maximumFractionDigits:1}) + ' ' + unit;
+}
+function zipEntryUrl(path) {
+    return '/zip-content.php?mode=download&job=' + encodeURIComponent(list.dataset.resultJob)
+        + '&file=' + encodeURIComponent(list.dataset.resultFile)
+        + '&entry=' + encodeURIComponent(path);
+}
+async function fetchZipEntry(path) {
+    const response = await fetch(zipEntryUrl(path), {credentials:'same-origin', cache:'no-store'});
+    if (!response.ok) throw new Error('Datei konnte nicht aus dem ZIP gelesen werden.');
+    return response.blob();
+}
+function downloadZipEntry(path) {
+    const link = document.createElement('a');
+    link.href = zipEntryUrl(path);
+    link.download = path.split('/').pop() || 'datei';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+function openZipBrowser() {
+    if (!zipDialog || !list.dataset.resultJob || !list.dataset.resultFile) return;
+    zipTitle.textContent = list.dataset.resultName;
+    zipDialog.showModal();
+    loadZipDirectory('');
+}
+zipUp?.addEventListener('click', () => {
+    const parts = zipCurrentPath.split('/').filter(Boolean);
+    parts.pop();
+    loadZipDirectory(parts.join('/'));
+});
+document.getElementById('zip-browser-close')?.addEventListener('click', () => zipDialog.close());
