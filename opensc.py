@@ -365,7 +365,7 @@ Q
     )
     second_line = second_line_style.create_stamp(
         writer,
-        BoxConstraints(width=text_width, height=18),
+        BoxConstraints(width=text_width, height=20),
         {"ts": timestamp},
     )
     second_line.apply(
