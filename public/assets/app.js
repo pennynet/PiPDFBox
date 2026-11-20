@@ -31,3 +31,24 @@ document.querySelector('form.panel').addEventListener('submit', (event) => {
         b.textContent = 'Verarbeitung läuft …';
     }
 });
+
+
+const tsaLink = document.getElementById('tsa-settings-link');
+const tsaDialog = document.getElementById('tsa-dialog');
+const tsaSelect = document.getElementById('tsa_server');
+const tsaNewFields = document.getElementById('tsa-new-fields');
+const tsaCancel = document.getElementById('tsa-dialog-cancel');
+
+if (tsaLink && tsaDialog && tsaSelect) {
+    tsaLink.addEventListener('click', (event) => {
+        event.preventDefault();
+        tsaDialog.showModal();
+    });
+    tsaCancel.addEventListener('click', () => tsaDialog.close());
+    tsaSelect.addEventListener('change', () => {
+        tsaNewFields.hidden = tsaSelect.value !== '__new__';
+    });
+    tsaDialog.addEventListener('click', (event) => {
+        if (event.target === tsaDialog) tsaDialog.close();
+    });
+}
