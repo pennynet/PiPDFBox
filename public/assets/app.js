@@ -197,12 +197,18 @@ async function validateSelectedPdf() {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hourCycle: 'h23',
-                timeZoneName: 'short'
+                hourCycle: 'h23'
             }).formatToParts(date);
             const part = type => parts.find(item => item.type === type)?.value || '';
-            // ISO-ähnliches Format mit deutscher Zeitzonenabkürzung (MEZ/MESZ).
-            return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}:${part('second')} ${part('timeZoneName')}`;
+            const zoneParts = new Intl.DateTimeFormat('de-DE', {
+                timeZone: 'Europe/Berlin',
+                timeZoneName: 'short'
+            }).formatToParts(date);
+            let zone = zoneParts.find(item => item.type === 'timeZoneName')?.value || '';
+            if (zone === 'GMT+1' || zone === 'UTC+1') zone = 'MEZ';
+            else if (zone === 'GMT+2' || zone === 'UTC+2') zone = 'MESZ';
+            // ISO-ähnliches Format, passend für alle Zeitangaben einschließlich Prüfzeitpunkt.
+            return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}:${part('second')} ${zone}`.trim();
         };
         const signingTimeLabel = signature.timestampValid === true
             ? 'Signierzeitpunkt (zeitgestempelt)'
@@ -231,7 +237,7 @@ async function validateSelectedPdf() {
         const heading = document.getElementById('signature-dialog-title');
         if (heading) heading.textContent = 'Signaturprüfung';
         const rows = [
-            ['Datei', data.filename || file.name],
+            ['Datei', file.name],
             ['Dateigröße', formatFileSize(file.size)],
             ['Gesamtergebnis', data.valid === true ? 'Gültig' : 'Nicht gültig'],
             ['Dokument unverändert', data.documentIntact === true ? 'Ja' : 'Nein'],
