@@ -592,6 +592,13 @@ check_installation() {
         echo "[FEHLT] PC/SC-Dienst nicht aktiv"
         failed=1
     fi
+    if command -v runuser >/dev/null 2>&1 && \
+        runuser -u www-data -- "$PKCS11_TOOL" --module "$PKCS11_MODULE" --list-slots >/dev/null 2>&1; then
+        echo "[OK] PC/SC-Zugriff für www-data"
+    else
+        echo "[FEHLT] PC/SC-Zugriff für www-data (Kartenleser/PCSC-Socket prüfen)"
+        failed=1
+    fi
     if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then echo "[OK] $PHP_FPM_SERVICE aktiv"; else echo "[FEHLT] $PHP_FPM_SERVICE nicht aktiv"; failed=1; fi
     if nginx -t; then echo "[OK] Nginx-Konfiguration"; else failed=1; fi
     return "$failed"
