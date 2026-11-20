@@ -362,10 +362,6 @@ Q
         first_line_style,
         stamp_text="am %(ts)s",
         inner_content_layout=centered_layout,
-        text_box_style=replace(
-            first_line_style.text_box_style,
-            font_size=9,
-        ),
     )
     second_line = second_line_style.create_stamp(
         writer,
