@@ -188,13 +188,21 @@ async function validateSelectedPdf() {
         const formatDateTime = value => {
             if (!value) return 'Nicht angegeben';
             const date = new Date(value);
-            return Number.isNaN(date.getTime())
-                ? String(value)
-                : new Intl.DateTimeFormat('de-DE', {
-                    dateStyle: 'medium',
-                    timeStyle: 'medium',
-                    timeZone: 'Europe/Berlin'
-                }).format(date);
+            if (Number.isNaN(date.getTime())) return String(value);
+            const parts = new Intl.DateTimeFormat('de-DE', {
+                timeZone: 'Europe/Berlin',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hourCycle: 'h23',
+                timeZoneName: 'short'
+            }).formatToParts(date);
+            const part = type => parts.find(item => item.type === type)?.value || '';
+            // ISO-ähnliches Format mit deutscher Zeitzonenabkürzung (MEZ/MESZ).
+            return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}:${part('second')} ${part('timeZoneName')}`;
         };
         const signingTimeLabel = signature.timestampValid === true
             ? 'Signierzeitpunkt (zeitgestempelt)'
@@ -221,9 +229,10 @@ async function validateSelectedPdf() {
             return size.toLocaleString('de-DE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + unit;
         };
         const heading = document.getElementById('signature-dialog-title');
-        if (heading) heading.textContent = 'Signaturprüfung – ' + file.name + ' (' + formatFileSize(file.size) + ')';
+        if (heading) heading.textContent = 'Signaturprüfung';
         const rows = [
             ['Datei', data.filename || file.name],
+            ['Dateigröße', formatFileSize(file.size)],
             ['Gesamtergebnis', data.valid === true ? 'Gültig' : 'Nicht gültig'],
             ['Dokument unverändert', data.documentIntact === true ? 'Ja' : 'Nein'],
             ['Unterzeichner', signature.signerName || signature.signerDn || 'Nicht angegeben'],
@@ -237,7 +246,7 @@ async function validateSelectedPdf() {
                 : (signature.timestampValid === true ? 'Zeitpunkt nicht angegeben' : 'Kein gültiger Zeitstempel bestätigt')],
             ['Zeitstempel', signature.timestampValid === true ? 'Gültig' : 'Nicht bestätigt'],
             ['Qualifizierte Signatur', summary.hasQualifiedSignature === true ? 'Ja' : 'Nein'],
-            ['Prüfzeitpunkt', data.validatedAt || 'Nicht angegeben']
+            ['Prüfzeitpunkt', formatDateTime(data.validatedAt)]
         ];
         signatureResult.replaceChildren();
         const status = document.createElement('p');
