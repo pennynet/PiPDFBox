@@ -576,6 +576,21 @@
 }
 .pdf-chip.dragging * { pointer-events: none; }
 .pdf-chip.drag-over { outline: 2px solid #3975c7; outline-offset: 1px; }
+.pdf-chip-placeholder {
+    flex: 0 0 auto;
+    border: 1px dashed #8aa6c8;
+    border-radius: 9px;
+    background: #eaf1fa;
+}
+.pdf-chip-ghost {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    opacity: .92;
+    transform: rotate(2deg) scale(1.03);
+    box-shadow: 0 10px 28px #0f172a33;
+    cursor: grabbing;
+}
 .pdf-chip-open {
     display: flex;
     align-items: center;
