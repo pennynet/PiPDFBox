@@ -9,7 +9,7 @@ Diese Anleitung ergänzt den Installer für Debian GNU/Linux 13 (Trixie). Der un
 - Netzwerkzugriff auf GitHub und die Debian-Paketquellen
 - Netzwerkzugriff auf das öffentliche PiPDFBox-Repository auf GitHub
 
-Der Installer installiert bzw. prüft die benötigten Pakete, darunter Nginx, PHP 8.4 FPM, Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch.
+Der Installer installiert bzw. prüft die benötigten Pakete, darunter Nginx, PHP 8.4 FPM, Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch. Für die PDF-Signierung baut er OpenSC 0.27.1 aus dem offiziellen, per SHA-256 geprüften Quellarchiv und installiert pyHanko 0.38.2 samt Abhängigkeiten mit pip in `/opt/pipdfbox/python`. Es wird keine virtuelle Python-Umgebung angelegt.
 
 ## Neuinstallation
 
@@ -23,6 +23,8 @@ Das Repository ist öffentlich. Für den Download und die Installation ist keine
 
 Im Menü **1) Neuinstallation / Einrichtung** wählen und den Anweisungen folgen. Der Installer fragt den gewünschten Port und ein Zugangspasswort ab.
 
+Für die Signierung müssen der kompatible Kartenleser und die D-TRUST-Signaturkarte angeschlossen sein. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben; PiPDFBox fragt keine PIN im Browser ab.
+
 Anschließend im Browser öffnen:
 
 ```
@@ -34,6 +36,8 @@ http://<IP-Adresse-des-Raspberry-Pi>:<gewählter-Port>
 | Pfad | Zweck |
 |---|---|
 | `/opt/pipdfbox` | Anwendungscode |
+| `/opt/pipdfbox/python` | pyHanko und Python-Abhängigkeiten für die Signierung |
+| `/opt/opensc-0.27.1` | OpenSC-Werkzeuge und PKCS#11-Modul |
 | `/etc/pipdfbox` | Zugangskonfiguration und Port |
 | `/var/lib/pipdfbox/jobs` | Uploads, Ergebnisse und temporäre Auftragsdateien |
 | `/etc/systemd/system/pipdfbox-cleanup.service` | Dienst für die automatische Bereinigung |
@@ -69,9 +73,9 @@ Ein systemd-Timer startet zehn Minuten nach dem Booten und danach stündlich die
 Im Verwaltungsmenü **5) PiPDFBox deinstallieren** auswählen.
 
 - **Nur Anwendung entfernen:** Programmdateien, Nginx-Site, Launcher, PiPDFBox-spezifische PHP-FPM-Konfiguration und Bereinigungs-Timer werden entfernt. Konfiguration und PDF-Aufträge bleiben erhalten.
-- **Alles entfernen:** Zusätzlich werden `/etc/pipdfbox` und `/var/lib/pipdfbox` gelöscht.
+- **Alles entfernen:** Zusätzlich werden `/etc/pipdfbox`, `/var/lib/pipdfbox` und der eigens installierte OpenSC-Build unter `/opt/opensc-0.27.1` samt zugehöriger Linker-Konfiguration gelöscht.
 
-Allgemeine Systempakete (z. B. Nginx, PHP, Python, Ghostscript) werden bewusst nicht automatisch deinstalliert.
+Allgemeine Systempakete (z. B. Nginx, PHP, Python, Ghostscript, pcscd und die Build-Werkzeuge) werden bewusst nicht automatisch deinstalliert.
 
 ## Wiederherstellung
 
