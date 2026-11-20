@@ -1,11 +1,145 @@
-const picker=document.getElementById('pdfs');
-const list=document.getElementById('filelist');
-function showFiles(){const files=[...(picker.files||[])];list.textContent=files.length?files.map(f=>`${f.name} · ${(f.size/1024/1024).toFixed(2)} MB`).join('\n'):'Noch keine Dateien ausgewählt';}
-picker.addEventListener('change',showFiles);
-const drop=document.querySelector('.drop');
-for(const ev of ['dragenter','dragover']) drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hover')});
-for(const ev of ['dragleave','drop']) drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hover')});
-drop.addEventListener('drop',e=>{const dt=new DataTransfer();[...e.dataTransfer.files].filter(f=>f.type==='application/pdf'||f.name.toLowerCase().endsWith('.pdf')).forEach(f=>dt.items.add(f));picker.files=dt.files;showFiles()});
+const picker = document.getElementById('pdfs');
+const list = document.getElementById('filelist');
+const drop = document.getElementById('pdf-dropzone');
+const uploadPrompt = document.getElementById('upload-prompt');
+const viewerDialog = document.getElementById('pdf-viewer-dialog');
+const viewerFrame = document.getElementById('pdf-viewer-frame');
+const viewerTitle = document.getElementById('pdf-viewer-title');
+let viewerUrl = null;
+let draggedIndex = null;
+
+function currentFiles() { return [...(picker.files || [])]; }
+function setFiles(files) {
+    const transfer = new DataTransfer();
+    files.forEach(file => transfer.items.add(file));
+    picker.files = transfer.files;
+    renderFiles();
+}
+function renderFiles() {
+    const files = currentFiles();
+    list.replaceChildren();
+    uploadPrompt.hidden = files.length > 0;
+    if (!files.length) {
+        const empty = document.createElement('span');
+        empty.className = 'pdf-empty';
+        empty.textContent = 'Noch keine Dateien ausgewählt';
+        list.appendChild(empty);
+        return;
+    }
+    files.forEach((file, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'pdf-chip';
+        chip.draggable = true;
+        chip.dataset.index = String(index);
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'pdf-chip-open';
+        open.title = file.name + ' – anklicken zum Öffnen, rechtsklicken zur Signaturprüfung';
+        const icon = document.createElement('span');
+        icon.className = 'pdf-chip-icon';
+        icon.textContent = 'PDF';
+        const name = document.createElement('span');
+        name.className = 'pdf-chip-name';
+        name.textContent = file.name;
+        open.append(icon, name);
+        open.addEventListener('click', () => openPdf(file));
+        open.addEventListener('contextmenu', event => {
+            event.preventDefault();
+            validateSelectedPdf(file);
+        });
+        const verify = document.createElement('button');
+        verify.type = 'button';
+        verify.className = 'pdf-chip-verify';
+        verify.textContent = '⋯';
+        verify.title = 'Signatur prüfen';
+        verify.setAttribute('aria-label', 'Signatur von ' + file.name + ' prüfen');
+        verify.addEventListener('click', () => validateSelectedPdf(file));
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'pdf-chip-remove';
+        remove.textContent = '×';
+        remove.title = 'Datei entfernen';
+        remove.setAttribute('aria-label', file.name + ' entfernen');
+        remove.addEventListener('click', () => setFiles(currentFiles().filter((_, i) => i !== index)));
+        chip.append(open, verify, remove);
+        chip.addEventListener('dragstart', event => {
+            draggedIndex = index;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', String(index));
+            chip.classList.add('dragging');
+        });
+        chip.addEventListener('dragend', () => {
+            draggedIndex = null;
+            chip.classList.remove('dragging');
+            list.querySelectorAll('.pdf-chip').forEach(item => item.classList.remove('drag-over'));
+        });
+        chip.addEventListener('dragover', event => {
+            event.preventDefault();
+            if (draggedIndex !== null && draggedIndex !== index) chip.classList.add('drag-over');
+        });
+        chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+        chip.addEventListener('drop', event => {
+            event.preventDefault();
+            chip.classList.remove('drag-over');
+            const from = draggedIndex;
+            const to = index;
+            if (from === null || from === to) return;
+            const reordered = currentFiles();
+            const [moved] = reordered.splice(from, 1);
+            reordered.splice(to, 0, moved);
+            setFiles(reordered);
+        });
+        list.appendChild(chip);
+    });
+}
+function acceptFiles(incoming) {
+    const existing = currentFiles();
+    const additions = [...incoming].filter(file =>
+        file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    );
+    const merged = [...existing];
+    additions.forEach(file => {
+        if (!merged.some(old => old.name === file.name && old.size === file.size && old.lastModified === file.lastModified)) merged.push(file);
+    });
+    if (merged.length > 100) {
+        alert('Maximal 100 PDF-Dateien pro Auftrag.');
+        return;
+    }
+    setFiles(merged);
+}
+picker.addEventListener('change', () => acceptFiles(picker.files));
+drop.addEventListener('click', event => {
+    if (event.target.closest('.pdf-chip')) return;
+    if (event.target === picker) return;
+    picker.click();
+});
+for (const ev of ['dragenter', 'dragover']) drop.addEventListener(ev, event => {
+    event.preventDefault();
+    drop.classList.add('hover');
+});
+for (const ev of ['dragleave', 'drop']) drop.addEventListener(ev, event => {
+    if (event.type === 'drop' && event.target.closest('.pdf-chip')) return;
+    event.preventDefault();
+    drop.classList.remove('hover');
+});
+drop.addEventListener('drop', event => {
+    if (event.target.closest('.pdf-chip')) return;
+    event.preventDefault();
+    acceptFiles(event.dataTransfer.files);
+});
+function openPdf(file) {
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = URL.createObjectURL(file);
+    viewerTitle.textContent = file.name;
+    viewerFrame.src = viewerUrl;
+    viewerDialog.showModal();
+}
+document.getElementById('pdf-viewer-close')?.addEventListener('click', () => viewerDialog.close());
+viewerDialog?.addEventListener('close', () => {
+    viewerFrame.src = 'about:blank';
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = null;
+});
 document.querySelector('form.panel').addEventListener('submit', (event) => {
     const b = event.submitter || document.activeElement;
     const result = document.querySelector('.result');
