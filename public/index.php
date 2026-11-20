@@ -18,6 +18,29 @@ if (!is_file($configFile)) {
 $config = require $configFile;
 $dataDir = $config['data_dir'];
 
+$tsaSettingsFile = rtrim($dataDir, '/') . '/tsa-servers.json';
+$defaultTsaSettings = [
+    'selected' => 'balstamp',
+    'servers' => [
+        'balstamp' => [
+            'name' => 'BalTstamp',
+            'url' => 'http://tsa2.baltstamp.lt',
+        ],
+    ],
+];
+$tsaSettings = $defaultTsaSettings;
+if (is_file($tsaSettingsFile)) {
+    $storedTsaSettings = json_decode((string)file_get_contents($tsaSettingsFile), true);
+    if (is_array($storedTsaSettings) && isset($storedTsaSettings['servers']) && is_array($storedTsaSettings['servers'])) {
+        $tsaSettings['servers'] = $storedTsaSettings['servers'] + $defaultTsaSettings['servers'];
+        $tsaSettings['selected'] = (string)($storedTsaSettings['selected'] ?? 'balstamp');
+        if (!isset($tsaSettings['servers'][$tsaSettings['selected']])) {
+            $tsaSettings['selected'] = 'balstamp';
+        }
+    }
+}
+$selectedTsaUrl = (string)$tsaSettings['servers'][$tsaSettings['selected']]['url'];
+
 if (!isset($_SESSION['csrf'])) {
     $_SESSION['csrf'] = bin2hex(random_bytes(32));
 }
@@ -157,6 +180,50 @@ if (empty($_SESSION['logged_in'])) {
     </body>
     </html>
     <?php
+    exit;
+}
+
+/* Zeitserver-Einstellungen */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_tsa') {
+    if (!hash_equals($_SESSION['csrf'], (string)($_POST['csrf'] ?? ''))) {
+        $_SESSION['flash_error'] = 'Sitzung abgelaufen. Bitte Seite neu laden.';
+    } else {
+        $choice = (string)($_POST['tsa_server'] ?? 'balstamp');
+        if ($choice === '__new__') {
+            $name = trim((string)($_POST['tsa_new_name'] ?? ''));
+            $url = trim((string)($_POST['tsa_new_url'] ?? ''));
+            $parts = parse_url($url);
+            $validUrl = filter_var($url, FILTER_VALIDATE_URL) !== false
+                && is_array($parts)
+                && in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true)
+                && !empty($parts['host'])
+                && !isset($parts['user'])
+                && !isset($parts['pass'])
+                && !isset($parts['fragment']);
+            if ($name === '' || mb_strlen($name, 'UTF-8') > 60 || !$validUrl || mb_strlen($url, 'UTF-8') > 500) {
+                $_SESSION['flash_error'] = 'Bitte eine Bezeichnung und eine gültige HTTP-/HTTPS-Zeitserver-URL ohne Zugangsdaten eingeben.';
+            } else {
+                $choice = 'custom_' . bin2hex(random_bytes(6));
+                $tsaSettings['servers'][$choice] = ['name' => $name, 'url' => $url];
+            }
+        }
+        if (!isset($_SESSION['flash_error'])) {
+            if (!isset($tsaSettings['servers'][$choice])) {
+                $_SESSION['flash_error'] = 'Der ausgewählte Zeitserver ist ungültig.';
+            } else {
+                $tsaSettings['selected'] = $choice;
+                $json = json_encode($tsaSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                $tmp = $tsaSettingsFile . '.tmp';
+                if ($json === false || file_put_contents($tmp, $json, LOCK_EX) === false || !rename($tmp, $tsaSettingsFile)) {
+                    @unlink($tmp);
+                    $_SESSION['flash_error'] = 'Zeitserver-Einstellungen konnten nicht gespeichert werden.';
+                } else {
+                    $_SESSION['flash_notice'] = 'Zeitserver-Einstellungen gespeichert.';
+                }
+            }
+        }
+    }
+    header('Location: /', true, 303);
     exit;
 }
 
@@ -305,6 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                         if ($op === 'sign' && ($_POST['visible_stamp'] ?? '') === '1') {
                             $args[] = '--visible-stamp';
+                            $args[] = '--tsa-url=' . $selectedTsaUrl;
                         }
 
                         if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
@@ -565,7 +633,7 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1">
-                        Stempel und Zeitstempel anfügen
+                        Stempel und <a href="#" id="tsa-settings-link" class="inline-settings-link">Zeitstempel</a> anfügen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
@@ -647,6 +715,33 @@ $result = $_SESSION['result'] ?? null;
             </section>
 
         </div>
+
+        <dialog id="tsa-dialog" class="settings-dialog" aria-labelledby="tsa-dialog-title">
+            <form method="post" class="tsa-settings-form">
+                <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
+                <input type="hidden" name="action" value="save_tsa">
+                <h3 id="tsa-dialog-title">Zeitserver auswählen</h3>
+                <label for="tsa_server">Zeitstempelserver</label>
+                <select id="tsa_server" name="tsa_server">
+                    <?php foreach ($tsaSettings['servers'] as $serverId => $server): ?>
+                        <option value="<?= h((string)$serverId) ?>" <?= $serverId === $tsaSettings['selected'] ? 'selected' : '' ?>>
+                            <?= h((string)$server['name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                    <option value="__new__">Neuen Zeitserver eintragen …</option>
+                </select>
+                <div id="tsa-new-fields" hidden>
+                    <label for="tsa_new_name">Bezeichnung</label>
+                    <input type="text" id="tsa_new_name" name="tsa_new_name" maxlength="60" placeholder="z. B. Mein Zeitserver">
+                    <label for="tsa_new_url">Zeitserver-URL</label>
+                    <input type="url" id="tsa_new_url" name="tsa_new_url" maxlength="500" placeholder="https://tsa.example.com">
+                </div>
+                <div class="dialog-actions">
+                    <button type="button" class="dialog-cancel" id="tsa-dialog-cancel">Abbrechen</button>
+                    <button type="submit" class="primary">Speichern</button>
+                </div>
+            </form>
+        </dialog>
 
         <p class="muted center processing-hint">
             Bitte während der Verarbeitung das Fenster geöffnet lassen.
