@@ -495,7 +495,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=25">
+    <link rel="stylesheet" href="/assets/style.css?v=26">
 </head>
 <body>
 
@@ -512,10 +512,14 @@ $result = $_SESSION['result'] ?? null;
     </div>
 
     <nav class="header-actions">
+        <a class="signature-check-link" href="#" id="signature-check-link">Signatur prüfen</a>
         <a class="help-link" href="/handbuch.php" target="_blank" rel="noopener noreferrer">Hilfe</a>
         <a class="logout" href="/?logout=1">Abmelden</a>
     </nav>
 </header>
+
+<input type="file" id="signature-file" accept="application/pdf,.pdf" hidden>
+<div id="signature-result" class="signature-result" hidden aria-live="polite"></div>
 
 <main class="wrap">
 
@@ -760,7 +764,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=9"></script>
+<script src="/assets/app.js?v=10"></script>
 
 </body>
 </html>
