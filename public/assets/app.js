@@ -208,7 +208,7 @@ async function validateSelectedPdf() {
             if (zone === 'GMT+1' || zone === 'UTC+1') zone = 'MEZ';
             else if (zone === 'GMT+2' || zone === 'UTC+2') zone = 'MESZ';
             // ISO-ähnliches Format, passend für alle Zeitangaben einschließlich Prüfzeitpunkt.
-            return `${part('year')}-${part('month')}-${part('day')} ${part('hour')}:${part('minute')}:${part('second')} ${zone}`.trim();
+            return `${part('day')}-${part('month')}-${part('year')} ${part('hour')}:${part('minute')}:${part('second')} ${zone}`.trim();
         };
         const signingTimeLabel = signature.timestampValid === true
             ? 'Signierzeitpunkt (zeitgestempelt)'
