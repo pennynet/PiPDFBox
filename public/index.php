@@ -601,12 +601,13 @@ $result = $_SESSION['result'] ?? null;
             value="<?= h($_SESSION['csrf']) ?>"
         >
 
-        <label class="drop" for="pdfs">
-            <span class="uploadicon">↑</span>
-            <strong>PDF-Dateien hier ablegen</strong>
-            <span>oder klicken, um Dateien auszuwählen</span>
-            <small>PDF · maximal 100 Dateien, 400 MB je Datei, 800 MB je Auftrag</small>
-
+        <div class="drop" id="pdf-dropzone">
+            <div class="upload-prompt" id="upload-prompt">
+                <span class="uploadicon">↑</span>
+                <strong>PDF-Dateien hier ablegen</strong>
+                <span>oder klicken, um Dateien auszuwählen</span>
+                <small>PDF · maximal 100 Dateien, 400 MB je Datei, 800 MB je Auftrag</small>
+            </div>
             <input
                 id="pdfs"
                 type="file"
@@ -615,11 +616,18 @@ $result = $_SESSION['result'] ?? null;
                 multiple
                 required
             >
-        </label>
-
-        <div id="filelist" class="filelist">
-            Noch keine Dateien ausgewählt
+            <div id="filelist" class="pdf-file-grid" aria-live="polite">
+                <span class="pdf-empty">Noch keine Dateien ausgewählt</span>
+            </div>
         </div>
+
+        <dialog id="pdf-viewer-dialog" class="pdf-viewer-dialog">
+            <div class="pdf-viewer-head">
+                <strong id="pdf-viewer-title">PDF-Vorschau</strong>
+                <button type="button" class="dialog-cancel" id="pdf-viewer-close">Schließen</button>
+            </div>
+            <iframe id="pdf-viewer-frame" title="PDF-Vorschau"></iframe>
+        </dialog>
 
         <h2 class="tools-heading">PDF-Aufgabe auswählen</h2>
 
@@ -797,7 +805,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=14"></script>
+<script src="/assets/app.js?v=15"></script>
 
 </body>
 </html>
