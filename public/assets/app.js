@@ -44,6 +44,82 @@ if (visibleStampCheckbox && tsaLinkWrap) {
     updateTsaLinkVisibility();
 }
 
+const settingsLink = document.getElementById('settings-link');
+const settingsMenu = document.getElementById('settings-menu-dialog');
+const sealiumDialog = document.getElementById('sealium-dialog');
+const sealiumForm = document.getElementById('sealium-settings-form');
+const sealiumKey = document.getElementById('sealium-api-key');
+const sealiumStatus = document.getElementById('sealium-key-status');
+const sealiumMessage = document.getElementById('sealium-settings-message');
+const sealiumSaveButton = document.getElementById('sealium-save-button');
+
+async function loadSealiumStatus() {
+    try {
+        const response = await fetch('/sealium-settings.php', {credentials:'same-origin', cache:'no-store'});
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Status konnte nicht geladen werden.');
+        sealiumStatus.textContent = data.configured ? 'API-Schlüssel ist gespeichert.' : 'Noch kein API-Schlüssel hinterlegt.';
+    } catch (error) {
+        sealiumStatus.textContent = error.message || 'Status nicht verfügbar.';
+    }
+}
+
+if (settingsLink && settingsMenu) {
+    settingsLink.addEventListener('click', event => {
+        event.preventDefault();
+        settingsMenu.showModal();
+    });
+    document.getElementById('settings-menu-close')?.addEventListener('click', () => settingsMenu.close());
+    settingsMenu.addEventListener('click', event => {
+        if (event.target === settingsMenu) settingsMenu.close();
+    });
+    document.getElementById('open-tsa-settings')?.addEventListener('click', () => {
+        settingsMenu.close();
+        tsaDialog?.showModal();
+    });
+    document.getElementById('open-sealium-settings')?.addEventListener('click', () => {
+        settingsMenu.close();
+        sealiumDialog?.showModal();
+        sealiumKey.value = '';
+        sealiumMessage.textContent = '';
+        loadSealiumStatus();
+    });
+}
+
+if (sealiumForm && sealiumDialog) {
+    document.getElementById('sealium-dialog-cancel')?.addEventListener('click', () => sealiumDialog.close());
+    sealiumDialog.addEventListener('click', event => {
+        if (event.target === sealiumDialog) sealiumDialog.close();
+    });
+    sealiumForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const key = sealiumKey.value.trim();
+        if (!key) {
+            sealiumMessage.textContent = 'Bitte einen API-Schlüssel eingeben.';
+            return;
+        }
+        sealiumSaveButton.disabled = true;
+        sealiumSaveButton.textContent = 'Wird gespeichert …';
+        sealiumMessage.textContent = '';
+        try {
+            const body = new FormData();
+            body.append('api_key', key);
+            body.append('csrf', document.querySelector('input[name="csrf"]')?.value || '');
+            const response = await fetch('/sealium-settings.php', {method:'POST', body, credentials:'same-origin'});
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Schlüssel konnte nicht gespeichert werden.');
+            sealiumKey.value = '';
+            sealiumStatus.textContent = 'API-Schlüssel ist gespeichert.';
+            sealiumMessage.textContent = 'Schlüssel sicher gespeichert. Die Verbindung wird bei der nächsten Signaturprüfung verwendet.';
+        } catch (error) {
+            sealiumMessage.textContent = error.message || 'Speichern fehlgeschlagen.';
+        } finally {
+            sealiumSaveButton.disabled = false;
+            sealiumSaveButton.textContent = 'Speichern';
+        }
+    });
+}
+
 const tsaLink = document.getElementById('tsa-settings-link');
 const tsaDialog = document.getElementById('tsa-dialog');
 const tsaSelect = document.getElementById('tsa_server');
