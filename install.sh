@@ -521,6 +521,8 @@ apply_nginx_config() {
 }
 
 install_app() {
+    # Office-Konvertierung ist eine Voraussetzung der Neuinstallation.
+    install_libreoffice || return 1
     check_dependencies || return 1
     download_app_from_github || return 1
     check_app || return 1
