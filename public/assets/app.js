@@ -122,6 +122,13 @@ function acceptFiles(incoming) {
     const additions = [...incoming].filter(file =>
         file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     );
+    // Sobald ein neuer Upload beginnt, ist ein zuvor erzeugtes Ergebnis veraltet.
+    // Sofort aus der Kachel entfernen; serverseitig wird es beim neuen Auftrag
+    // zusätzlich vor der Verarbeitung aus der Session gelöscht.
+    if (additions.length > 0) {
+        delete list.dataset.resultUrl;
+        delete list.dataset.resultName;
+    }
     const merged = [...existing];
     additions.forEach(file => {
         if (!merged.some(old => old.name === file.name && old.size === file.size && old.lastModified === file.lastModified)) merged.push(file);
