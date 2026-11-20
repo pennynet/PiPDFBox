@@ -128,7 +128,7 @@ def _run_pkcs11(arguments: list[str], timeout: int = 30) -> str:
 def _object_ids(slot_id: str, object_type: str) -> set[str]:
     output = _run_pkcs11(["--slot", slot_id, "--list-objects", "--type", object_type])
     return {
-        match.group(1).lower().lstrip("0") or "0"
+        match.group(1).lower()
         for match in re.finditer(r"(?im)^\s*ID:\s*([0-9a-f]+)\s*$", output)
     }
 
