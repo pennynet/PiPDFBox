@@ -67,6 +67,9 @@ function renderFiles() {
             draggedIndex = index;
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', String(index));
+            // Eigenes Drag-Bild behalten, während die Originalkachel aus dem Grid-Fluss
+            // genommen wird. So bleibt am Ursprungsplatz keine sichtbare Lücke.
+            event.dataTransfer.setDragImage(chip, Math.min(event.offsetX, chip.offsetWidth), Math.min(event.offsetY, chip.offsetHeight));
             chip.classList.add('dragging');
         });
         chip.addEventListener('dragend', () => {
