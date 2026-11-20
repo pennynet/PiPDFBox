@@ -186,7 +186,8 @@ function renderFiles() {
         download.textContent = '↓';
         download.title = 'Ergebnisdatei herunterladen';
         download.setAttribute('aria-label', 'Ergebnisdatei herunterladen');
-        output.append(open, reuse, download);
+        if (isZip) output.append(open, download);
+        else output.append(open, reuse, download);
 
         if (list.dataset.resultAction === 'sign') {
             const verify = document.createElement('button');
