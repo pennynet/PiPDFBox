@@ -90,9 +90,9 @@ Die Anwendung ist für den Betrieb im vertrauenswürdigen lokalen Netzwerk vorge
 Im Verwaltungsmenü **5) PiPDFBox deinstallieren** auswählen. Es gibt zwei Varianten:
 
 - **Nur Anwendung entfernen:** Programmdateien, Webserver-Konfiguration und PiPDFBox-spezifische PHP-FPM-Einstellungen sowie der Bereinigungs-Timer werden entfernt. Konfiguration und PDF-Aufträge bleiben erhalten.
-- **Alles entfernen:** Zusätzlich werden Konfiguration und PDF-Aufträge gelöscht.
+- **Alles entfernen:** Zusätzlich werden Konfiguration, PDF-Aufträge und der eigens installierte OpenSC-Build unter `/opt/opensc-0.27.1` entfernt.
 
-Die Deinstallation entfernt keine allgemeinen Systempakete wie Nginx, PHP, Ghostscript oder Python, da diese auch von anderen Anwendungen verwendet werden könnten.
+Die Deinstallation entfernt keine allgemeinen Systempakete wie Nginx, PHP, Ghostscript, Python oder pcscd, da diese auch von anderen Anwendungen verwendet werden könnten.
 
 ## Dokumentation und Tests
 
