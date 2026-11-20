@@ -392,6 +392,7 @@ class OpenSCPdfSigner:
 
     def sign_pdf(
         self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False,
+        use_timestamp: bool = True,
         tsa_url: str = "http://tsa2.baltstamp.lt",
     ) -> Path:
         if not input_pdf.is_file():
@@ -429,14 +430,9 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                # Den RFC-3161-Zeitstempel nur anfordern, wenn der vorhandene
-                # sichtbare Stempel aktiviert wurde. Ohne Stempel bleibt der
-                # bisherige Signaturablauf unverändert.
-                timestamper = (
-                    HTTPTimeStamper(tsa_url)
-                    if visible_stamp
-                    else None
-                )
+                # Der RFC-3161-Zeitstempel ist unabhängig vom sichtbaren
+                # Stempel und kann separat aktiviert oder deaktiviert werden.
+                timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
@@ -461,7 +457,7 @@ class OpenSCPdfSigner:
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp] [--tsa-url=URL]",
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp] [--timestamp] [--tsa-url=URL]",
             file=sys.stderr,
         )
         return 2
@@ -470,10 +466,11 @@ def main() -> int:
     output_pdf = Path(sys.argv[2]).resolve()
     options = sys.argv[3:]
     visible_stamp = "--visible-stamp" in options
+    use_timestamp = "--timestamp" in options
     tsa_options = [arg[len("--tsa-url="):] for arg in options if arg.startswith("--tsa-url=")]
     unknown_options = [
         arg for arg in options
-        if arg != "--visible-stamp" and not arg.startswith("--tsa-url=")
+        if arg not in ("--visible-stamp", "--timestamp") and not arg.startswith("--tsa-url=")
     ]
     if unknown_options or len(tsa_options) > 1:
         print("Ungültige Signieroption.", file=sys.stderr)
@@ -489,8 +486,8 @@ def main() -> int:
     ):
         print("Ungültige Zeitserver-URL.", file=sys.stderr)
         return 2
-    if not visible_stamp and tsa_options:
-        print("Ein Zeitserver kann nur mit --visible-stamp angegeben werden.", file=sys.stderr)
+    if not use_timestamp and tsa_options:
+        print("Eine Zeitserver-URL kann nur mit --timestamp angegeben werden.", file=sys.stderr)
         return 2
 
     try:
@@ -501,7 +498,8 @@ def main() -> int:
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
         signed_pdf = signer.sign_pdf(
-            input_pdf, output_pdf, visible_stamp=visible_stamp, tsa_url=tsa_url
+            input_pdf, output_pdf, visible_stamp=visible_stamp,
+            use_timestamp=use_timestamp, tsa_url=tsa_url
         )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
