@@ -367,7 +367,6 @@ async function validateResultPdf() {
 }
 
 async function deleteResultFile(button) {
-    if (!window.confirm('Möchten Sie die Ausgabedatei wirklich löschen?')) return;
     button.disabled = true;
     try {
         const body = new URLSearchParams({
