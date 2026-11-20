@@ -548,7 +548,7 @@
     justify-content: flex-start;
     gap: 9px;
     width: 100%;
-    max-height: 300px;
+    max-height: 225px;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 2px 5px 2px 2px;
