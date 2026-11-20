@@ -838,3 +838,23 @@
     .zip-browser-list { height:calc(100% - 140px); padding:8px; }
     .zip-entry-open { gap:8px; padding:10px 4px; }
 }
+
+.zip-browser-toolbar .zip-browser-import { margin-left:auto; }
+.zip-browser-import:disabled { opacity:.45; cursor:default; }
+.zip-entry { display:flex; align-items:center; gap:12px; }
+.zip-entry-open { flex:1; min-width:0; }
+.zip-entry-actions { display:flex; align-items:center; gap:12px; flex:0 0 auto; padding:0 8px; }
+.zip-entry-download {
+    display:grid; place-items:center; width:36px; height:36px;
+    border:1px solid #d5deea; border-radius:8px; background:#fff;
+    color:#365b85; font-size:22px; cursor:pointer;
+}
+.zip-entry-download:hover { background:#eef5fc; }
+.zip-entry-select { display:grid; place-items:center; width:36px; height:36px; cursor:pointer; }
+.zip-entry-select input { width:20px; height:20px; accent-color:#2474bd; cursor:pointer; }
+@media(max-width:540px) {
+    .zip-browser-toolbar .zip-browser-import { margin-left:0; }
+    .zip-entry { gap:4px; }
+    .zip-entry-actions { gap:4px; padding:0 2px; }
+    .zip-entry-download, .zip-entry-select { width:32px; height:36px; }
+}
