@@ -28,8 +28,9 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-$error = '';
-$notice = '';
+$error = (string)($_SESSION['flash_error'] ?? '');
+$notice = (string)($_SESSION['flash_notice'] ?? '');
+unset($_SESSION['flash_error'], $_SESSION['flash_notice']);
 
 function h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -406,6 +407,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
     }
+    // Post/Redirect/Get: Browser-Refresh darf keinen Auftrag erneut starten.
+    $_SESSION['flash_error'] = $error;
+    $_SESSION['flash_notice'] = $notice;
+    header('Location: /', true, 303);
+    exit;
 }
 
 $result = $_SESSION['result'] ?? null;
