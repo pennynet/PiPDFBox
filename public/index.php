@@ -307,6 +307,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             $args[] = '--visible-stamp';
                         }
 
+                        if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
+                            $args[] = '--reverse-inputs';
+                        }
+
                         if ($op === 'compress') {
                             $profile = (string)($_POST['compress_profile'] ?? 'stark');
                             if (!in_array($profile, ['maximal', 'stark', 'mittel'], true)) {
@@ -518,6 +522,10 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDFs zusammenführen</h3>
                     <p>Mehrere PDFs zu einer Datei verbinden.</p>
+                    <label class="option-check">
+                        <input type="checkbox" name="reverse_inputs" value="1">
+                        Reihung umkehren
+                    </label>
                     <button class="task-button" type="submit" name="action" value="merge">
                         PDFs zusammenführen
                     </button>
