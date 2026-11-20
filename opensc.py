@@ -281,7 +281,6 @@ def _append_signature_page(
     timezone_name = "MESZ" if signing_time.dst() else "MEZ"
     timestamp = f"{signing_time:%d.%m.%Y} um {signing_time:%H:%M} {timezone_name}"
 
-    stamp_width = urx - llx
     stamp_height = ury - lly
     badge_size = min(44.0, stamp_height - 12.0)
     if badge_size <= 0:
@@ -315,7 +314,8 @@ q
 14 32.418 17.582 36 22 36 c h S
 22 35 m 24 30.7 l 28.8 30.2 l 25.2 26.8 l
 26.2 22 l 22 24.4 l 17.8 22 l
-18.8 26.8 l 15.2 30.2 l 20 30.7 l h f
+18.8 26.8 l 15.2 30.2 l 20 30.7 l h
+0.68 0.46 0.13 rg f
 Q
 """
     RawContent(data=badge_art.encode("ascii")).add_to_page(writer, page_index)
