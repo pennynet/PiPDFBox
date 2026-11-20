@@ -343,7 +343,7 @@ Q
         DEFAULT_SIGNING_STAMP_STYLE,
         text_box_style=replace(
             DEFAULT_SIGNING_STAMP_STYLE.text_box_style,
-            font_size=12,
+            font_size=10,
         ),
         background=None,
         border_width=0,
