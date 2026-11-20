@@ -665,18 +665,18 @@ $result = $_SESSION['result'] ?? null;
             value="<?= h($_SESSION['csrf']) ?>"
         >
 
-        <div class="drop" id="pdf-dropzone">
+        <div class="drop" id="pdf-dropzone" data-csrf="<?= h($_SESSION['csrf']) ?>">
             <div class="upload-prompt" id="upload-prompt">
                 <span class="uploadicon">↑</span>
-                <strong>PDF-Dateien hier ablegen</strong>
+                <strong>PDF- oder Office-Dateien hier ablegen</strong>
                 <span>oder klicken, um Dateien auszuwählen</span>
-                <small>PDF · maximal 100 Dateien, 400 MB je Datei, 800 MB je Auftrag</small>
+                <small>PDF, Word, Excel und PowerPoint · maximal 100 Dateien, 400 MB je Datei, 800 MB je Auftrag</small>
             </div>
             <input
                 id="pdfs"
                 type="file"
                 name="pdfs[]"
-                accept="application/pdf,.pdf"
+                accept="application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                 multiple
                 required
             >
@@ -923,7 +923,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=36"></script>
+<script src="/assets/app.js?v=37"></script>
 
 </body>
 </html>
