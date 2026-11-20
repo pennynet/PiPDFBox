@@ -335,7 +335,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$error && $op === 'number' && count($valid) !== 1) {
                     $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
                 }
-                if (!$error && in_array($op, ['pdfa', 'ocr', 'sign'], true) && count($valid) !== 1) {
+                if (!$error && $op === 'sign' && count($valid) !== 1) {
+                    $error = 'Es kann immer nur eine PDF-Datei gleichzeitig signiert werden. Bitte genau eine Datei auswählen.';
+                }
+                if (!$error && in_array($op, ['pdfa', 'ocr'], true) && count($valid) !== 1) {
                     $error = 'Für diese Funktion bitte genau eine PDF auswählen.';
                 }
 
@@ -495,7 +498,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=29">
+    <link rel="stylesheet" href="/assets/style.css?v=30">
 </head>
 <body>
 
@@ -805,7 +808,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=15"></script>
+<script src="/assets/app.js?v=16"></script>
 
 </body>
 </html>
