@@ -144,7 +144,7 @@ if (empty($_SESSION['logged_in'])) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>PiPDFBox – Anmeldung</title>
-        <link rel="stylesheet" href="/assets/style.css?v=18">
+        <link rel="stylesheet" href="/assets/style.css?v=19">
     </head>
     <body>
         <main class="login">
@@ -632,8 +632,8 @@ $result = $_SESSION['result'] ?? null;
                     <h3>PDF signieren</h3>
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
-                        <input type="checkbox" name="visible_stamp" value="1">
-                        Stempel und <a href="#" id="tsa-settings-link" class="inline-settings-link">Zeitstempel</a> anfügen
+                        <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
+                        Stempel<span id="tsa-link-wrap" hidden> und <a href="#" id="tsa-settings-link" class="inline-settings-link">Zeitstempel</a></span> anfügen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
@@ -757,7 +757,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=8"></script>
+<script src="/assets/app.js?v=9"></script>
 
 </body>
 </html>
