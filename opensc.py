@@ -22,7 +22,7 @@ from asn1crypto import x509 as asn1_x509
 from cryptography import x509 as crypto_x509
 from cryptography.hazmat.primitives.asymmetric import rsa
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
-from pyhanko.pdf_utils.generic import DictionaryObject, NameObject, NullObject
+from pyhanko.pdf_utils.generic import DictionaryObject, NameObject, StreamObject
 from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import fields, signers
 
@@ -208,7 +208,7 @@ def _append_signature_page(writer: IncrementalPdfFileWriter) -> tuple[float, flo
         raise OpenSCPdfSigningError("Das PDF enthält keine Seiten")
 
     new_page = PageObject(
-        contents=NullObject(),
+        contents=writer.add_object(StreamObject(stream_data=b"")),
         media_box=writer.import_object(media_box),
         resources=DictionaryObject(),
     )
