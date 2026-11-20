@@ -565,7 +565,7 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1">
-                        Sichtbaren Stempel und Zeitstempel anfügen
+                        Stempel und Zeitstempel anfügen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
