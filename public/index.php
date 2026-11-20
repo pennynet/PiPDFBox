@@ -820,7 +820,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=32"></script>
+<script src="/assets/app.js?v=33"></script>
 
 </body>
 </html>
