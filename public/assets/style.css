@@ -428,3 +428,15 @@
     .signature-report-dialog #signature-result dl { grid-template-columns:1fr; gap:3px; }
     .signature-report-dialog #signature-result dd { margin-bottom:9px; }
 }
+
+
+/* Einstellungen im Kopfbereich und Dialog */
+.settings-link { color:#2459a6; text-decoration:none; font-size:14px; font-weight:650; white-space:nowrap; }
+.settings-link:hover { text-decoration:underline; }
+.settings-menu-body h3 { margin:0 0 16px; }
+.settings-menu-option { display:block; width:100%; padding:13px 12px; margin:8px 0; text-align:left; border:1px solid #dbe3ed; border-radius:9px; background:#f8fafc; color:#243449; font:inherit; font-size:14px; cursor:pointer; }
+.settings-menu-option:hover { background:#eef4fb; border-color:#b9cce3; }
+.settings-status { margin:0 0 12px; padding:10px 12px; border-radius:8px; background:#f1f5f9; color:#334155; font-size:13px; }
+.settings-help { margin:8px 0 0; color:#718096; font-size:12px; line-height:1.45; }
+.settings-message { margin-top:12px; color:#237344; font-size:13px; overflow-wrap:anywhere; }
+@media(max-width:540px) { .settings-link { font-size:12px; } }
