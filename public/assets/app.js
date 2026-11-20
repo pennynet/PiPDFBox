@@ -42,6 +42,7 @@ const tsaCancel = document.getElementById('tsa-dialog-cancel');
 if (tsaLink && tsaDialog && tsaSelect) {
     tsaLink.addEventListener('click', (event) => {
         event.preventDefault();
+        event.stopPropagation();
         tsaDialog.showModal();
     });
     tsaCancel.addEventListener('click', () => tsaDialog.close());
