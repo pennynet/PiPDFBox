@@ -23,6 +23,9 @@ OPENSC_VERSION="0.27.1"
 OPENSC_PREFIX="/opt/opensc-${OPENSC_VERSION}"
 OPENSC_SHA256="976f4a23eaf3397a1a2c3a7aac80bf971a8c3d829c9a79f06145bfaeeae5eca7"
 PYTHON_LIB_DIR="$APP_DIR/python"
+PKCS11_TOOL="$OPENSC_PREFIX/bin/pkcs11-tool"
+PKCS11_MODULE="$OPENSC_PREFIX/lib/opensc-pkcs11.so"
+POLKIT_RULE="/etc/polkit-1/rules.d/61-pcsc-www-data.rules"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -254,15 +257,43 @@ install_python_signing_dependencies() {
             error "pyHanko konnte nicht installiert werden."
             return 1
         }
+    # Die mit --target installierten Pakete müssen für PHP-FPM (www-data)
+    # lesbar und Verzeichnisse durchsuchbar sein.
+    chmod -R a+rX "$PYTHON_LIB_DIR"
     python3 -c "import sys; sys.path.insert(0, '$PYTHON_LIB_DIR'); import pyhanko, cryptography" || {
         error "pyHanko oder cryptography kann nicht importiert werden."
         return 1
     }
 }
 
+install_pcsc_polkit_rule() {
+    local polkit_group
+    polkit_group="$(getent group polkitd | cut -d: -f1)"
+    if [[ -z "$polkit_group" ]]; then
+        error "Gruppe polkitd fehlt; PC/SC-Regel für www-data kann nicht eingerichtet werden."
+        return 1
+    fi
+
+    install -d -m 755 "$(dirname "$POLKIT_RULE")"
+    cat > "$POLKIT_RULE" <<'POLKIT'
+polkit.addRule(function(action, subject) {
+    if (
+        (action.id == "org.debian.pcsc-lite.access_pcsc" ||
+         action.id == "org.debian.pcsc-lite.access_card") &&
+        subject.user == "www-data"
+    ) {
+        return polkit.Result.YES;
+    }
+});
+POLKIT
+    chown root:"$polkit_group" "$POLKIT_RULE"
+    chmod 640 "$POLKIT_RULE"
+}
+
 install_signing_dependencies() {
     install_opensc || return 1
     install_python_signing_dependencies || return 1
+    install_pcsc_polkit_rule || return 1
     if systemctl cat pcscd.socket >/dev/null 2>&1; then
         systemctl enable --now pcscd.socket
     else
@@ -563,7 +594,7 @@ check_installation() {
     info "PiPDFBox – Installationsprüfung"
     local failed=0 file
     check_dependencies || failed=1
-    if [[ -x "$OPENSC_PREFIX/bin/pkcs11-tool" && -f "$OPENSC_PREFIX/lib/opensc-pkcs11.so" ]]; then
+    if [[ -x "$PKCS11_TOOL" && -f "$PKCS11_MODULE" ]]; then
         echo "[OK] OpenSC $OPENSC_VERSION"
     else
         echo "[FEHLT] OpenSC $OPENSC_VERSION"
@@ -592,7 +623,7 @@ check_installation() {
         echo "[FEHLT] PC/SC-Dienst nicht aktiv"
         failed=1
     fi
-    if command -v runuser >/dev/null 2>&1 && \
+    if [[ -f "$POLKIT_RULE" ]] && \
         runuser -u www-data -- "$PKCS11_TOOL" --module "$PKCS11_MODULE" --list-slots >/dev/null 2>&1; then
         echo "[OK] PC/SC-Zugriff für www-data"
     else
