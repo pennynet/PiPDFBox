@@ -302,6 +302,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             ? [$paths[0], $dir . '/signiert.pdf']
                             : [$op, $dir];
 
+                        if ($op === 'sign' && ($_POST['visible_stamp'] ?? '') === '1') {
+                            $args[] = '--visible-stamp';
+                        }
+
                         if ($op === 'compress') {
                             $profile = (string)($_POST['compress_profile'] ?? 'stark');
                             if (!in_array($profile, ['maximal', 'stark', 'mittel'], true)) {
@@ -545,6 +549,10 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDF signieren</h3>
                     <p>PDF mit der D-TRUST-Signaturkarte digital signieren.</p>
+                    <label class="option-check">
+                        <input type="checkbox" name="visible_stamp" value="1">
+                        Sichtbaren Stempel auf zusätzlicher Schlussseite anzeigen
+                    </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
                     </button>
