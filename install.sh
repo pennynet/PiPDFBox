@@ -112,6 +112,7 @@ REQUIRED_PACKAGES=(
     php8.4-mbstring
     php8.4-zip
     ghostscript
+    libreoffice
     libreoffice-writer
     libreoffice-calc
     libreoffice-impress
