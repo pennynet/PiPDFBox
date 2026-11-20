@@ -495,7 +495,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=26">
+    <link rel="stylesheet" href="/assets/style.css?v=28">
 </head>
 <body>
 
@@ -512,11 +512,36 @@ $result = $_SESSION['result'] ?? null;
     </div>
 
     <nav class="header-actions">
+        <a class="settings-link" href="#" id="settings-link">Einstellungen</a>
         <a class="signature-check-link" href="#" id="signature-check-link">Signatur prüfen</a>
         <a class="help-link" href="/handbuch.php" target="_blank" rel="noopener noreferrer">Hilfe</a>
         <a class="logout" href="/?logout=1">Abmelden</a>
     </nav>
 </header>
+
+<dialog id="settings-menu-dialog" class="settings-dialog" aria-labelledby="settings-menu-title">
+    <div class="settings-menu-body">
+        <h3 id="settings-menu-title">Einstellungen</h3>
+        <button type="button" class="settings-menu-option" id="open-tsa-settings">Zeitstempelserver konfigurieren</button>
+        <button type="button" class="settings-menu-option" id="open-sealium-settings">Sealium API konfigurieren</button>
+        <div class="dialog-actions"><button type="button" class="dialog-cancel" id="settings-menu-close">Schließen</button></div>
+    </div>
+</dialog>
+
+<dialog id="sealium-dialog" class="settings-dialog" aria-labelledby="sealium-dialog-title">
+    <form id="sealium-settings-form" autocomplete="off">
+        <h3 id="sealium-dialog-title">Sealium API konfigurieren</h3>
+        <p id="sealium-key-status" class="settings-status">Status wird geladen …</p>
+        <label for="sealium-api-key">API-Schlüssel</label>
+        <input type="password" id="sealium-api-key" name="api_key" autocomplete="new-password" maxlength="512" placeholder="Sealium API-Schlüssel eingeben" required>
+        <p class="settings-help">Ein vorhandener Schlüssel wird aus Sicherheitsgründen nicht angezeigt. Ein neuer Schlüssel ersetzt den bisherigen.</p>
+        <div id="sealium-settings-message" class="settings-message" role="status" aria-live="polite"></div>
+        <div class="dialog-actions">
+            <button type="button" class="dialog-cancel" id="sealium-dialog-cancel">Abbrechen</button>
+            <button type="submit" class="primary" id="sealium-save-button">Speichern</button>
+        </div>
+    </form>
+</dialog>
 
 <dialog id="signature-dialog" class="signature-dialog signature-report-dialog" aria-labelledby="signature-dialog-title">
     <div class="signature-dialog-body">
@@ -772,7 +797,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=11"></script>
+<script src="/assets/app.js?v=12"></script>
 
 </body>
 </html>
