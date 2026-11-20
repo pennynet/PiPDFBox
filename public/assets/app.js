@@ -177,23 +177,23 @@ viewerDialog?.addEventListener('close', () => {
     if (viewerUrl && viewerUrl.startsWith('blob:')) URL.revokeObjectURL(viewerUrl);
     viewerUrl = null;
 });
-let signConfirmed = false;
+const signLimitDialog = document.getElementById('sign-limit-dialog');
+document.getElementById('sign-limit-close')?.addEventListener('click', () => signLimitDialog.close());
+
 document.querySelector('form.panel').addEventListener('submit', event => {
     const button = event.submitter || document.activeElement;
-    if (button && button.value === 'sign' && !signConfirmed) {
+    if (button && button.value === 'sign') {
         const files = currentFiles();
-        if (files.length !== 1) {
+        if (files.length === 0) {
             event.preventDefault();
-            alert(files.length === 0 ? 'Bitte zuerst genau eine PDF-Datei auswählen.' : 'Es kann immer nur eine PDF-Datei gleichzeitig signiert werden. Bitte wählen Sie genau eine Datei aus.');
+            alert('Bitte zuerst eine PDF-Datei auswählen.');
             return;
         }
-        event.preventDefault();
-        const file = files[0];
-        const size = (file.size / 1024 / 1024).toLocaleString('de-DE', {maximumFractionDigits: 2});
-        if (!window.confirm('Soll diese Datei jetzt qualifiziert elektronisch signiert werden?\n\n' + file.name + ' (' + size + ' MB)\n\nBitte prüfen Sie, ob dies die richtige Datei ist.')) return;
-        signConfirmed = true;
-        event.currentTarget.requestSubmit(button);
-        return;
+        if (files.length > 2) {
+            event.preventDefault();
+            signLimitDialog.showModal();
+            return;
+        }
     }
     const result = document.querySelector('.result');
     if (result) result.remove();
