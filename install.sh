@@ -623,11 +623,16 @@ check_installation() {
         echo "[FEHLT] PC/SC-Dienst nicht aktiv"
         failed=1
     fi
-    if [[ -f "$POLKIT_RULE" ]] && \
-        runuser -u www-data -- "$PKCS11_TOOL" --module "$PKCS11_MODULE" --list-slots >/dev/null 2>&1; then
-        echo "[OK] PC/SC-Zugriff für www-data"
+    # Nur die Polkit-Regel prüfen. pkcs11-tool --list-slots kann am
+    # Kartenleser eine CAN-Eingabe auslösen und gehört nicht in den
+    # nicht-interaktiven Installationscheck.
+    if [[ -f "$POLKIT_RULE" ]] &&
+        grep -qF 'action.id == "org.debian.pcsc-lite.access_pcsc"' "$POLKIT_RULE" &&
+        grep -qF 'action.id == "org.debian.pcsc-lite.access_card"' "$POLKIT_RULE" &&
+        grep -qF 'subject.user == "www-data"' "$POLKIT_RULE"; then
+        echo "[OK] PC/SC-Polkit-Regel für www-data vorhanden"
     else
-        echo "[FEHLT] PC/SC-Zugriff für www-data (Kartenleser/PCSC-Socket prüfen)"
+        echo "[FEHLT] PC/SC-Polkit-Regel für www-data"
         failed=1
     fi
     if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then echo "[OK] $PHP_FPM_SERVICE aktiv"; else echo "[FEHLT] $PHP_FPM_SERVICE nicht aktiv"; failed=1; fi
