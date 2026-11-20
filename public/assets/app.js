@@ -33,6 +33,17 @@ document.querySelector('form.panel').addEventListener('submit', (event) => {
 });
 
 
+const visibleStampCheckbox = document.getElementById('visible_stamp');
+const tsaLinkWrap = document.getElementById('tsa-link-wrap');
+
+if (visibleStampCheckbox && tsaLinkWrap) {
+    const updateTsaLinkVisibility = () => {
+        tsaLinkWrap.hidden = !visibleStampCheckbox.checked;
+    };
+    visibleStampCheckbox.addEventListener('change', updateTsaLinkVisibility);
+    updateTsaLinkVisibility();
+}
+
 const tsaLink = document.getElementById('tsa-settings-link');
 const tsaDialog = document.getElementById('tsa-dialog');
 const tsaSelect = document.getElementById('tsa_server');
