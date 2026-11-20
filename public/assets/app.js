@@ -381,9 +381,7 @@ filenamePrefixDialog?.addEventListener('click', event => {
 let bypassSignedPdfWarning = false;
 document.querySelector('form.panel').addEventListener('submit', async event => {
     const button = event.submitter || document.activeElement;
-    if (bypassSignedPdfWarning) {
-        bypassSignedPdfWarning = false;
-    } else if (button?.classList.contains('task-button')) {
+    if (!bypassSignedPdfWarning && button?.classList.contains('task-button')) {
         const files = currentFiles();
         let hasSignedPdf = false;
         for (const file of files) {
@@ -409,6 +407,8 @@ document.querySelector('form.panel').addEventListener('submit', async event => {
         return;
     }
     bypassFilenamePrefixPrompt = false;
+    // Warnung erst nach eventuell vorgeschaltetem Dateinamen-Dialog zurücksetzen.
+    bypassSignedPdfWarning = false;
     if (button && button.value === 'sign') {
         const files = currentFiles();
         if (files.length === 0) {
