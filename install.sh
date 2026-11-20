@@ -703,10 +703,12 @@ install_launcher() {
 update_app() {
     echo
     info "PiPDFBox – Anwendung aktualisieren"
+    # Zuerst den aktuellen Installer und Anwendungscode laden. Die danach
+    # ausgeführte Paketprüfung verwendet so die aktuelle Abhängigkeitsliste.
+    download_app_from_github || return 1
     check_dependencies || return 1
     phpenmod -v 8.4 zip || { error "PHP-ZIP konnte nicht aktiviert werden."; return 1; }
     systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
-    download_app_from_github || return 1
     check_app || return 1
     install_signing_dependencies || return 1
     install_sealium_key_support || return 1
