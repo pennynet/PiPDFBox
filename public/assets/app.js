@@ -88,6 +88,18 @@ function renderFiles() {
     const files = currentFiles();
     list.replaceChildren();
     uploadPrompt.hidden = files.length > 0;
+    if (files.length > 1) {
+        const clearAll = document.createElement('button');
+        clearAll.type = 'button';
+        clearAll.className = 'pdf-clear-all';
+        clearAll.textContent = '× Alle Dateien entfernen';
+        clearAll.title = 'Alle ausgewählten Eingabedateien entfernen';
+        clearAll.addEventListener('click', event => {
+            event.stopPropagation();
+            setFiles([]);
+        });
+        list.appendChild(clearAll);
+    }
     if (!files.length && !list.dataset.resultUrl) {
         const empty = document.createElement('span');
         empty.className = 'pdf-empty';
