@@ -64,3 +64,72 @@ if (tsaLink && tsaDialog && tsaSelect) {
         if (event.target === tsaDialog) tsaDialog.close();
     });
 }
+
+
+// Externe Signaturprüfung über Sealium
+const signatureLink = document.getElementById('signature-check-link');
+const signatureFile = document.getElementById('signature-file');
+const signatureResult = document.getElementById('signature-result');
+if (signatureLink && signatureFile && signatureResult) {
+    signatureLink.addEventListener('click', event => {
+        event.preventDefault();
+        signatureFile.click();
+    });
+
+    signatureFile.addEventListener('change', async () => {
+        const file = signatureFile.files && signatureFile.files[0];
+        if (!file) return;
+        signatureResult.hidden = false;
+        signatureResult.className = 'signature-result';
+        signatureResult.textContent = 'Signatur wird bei Sealium geprüft …';
+        const form = new FormData();
+        form.append('pdf', file);
+        form.append('csrf', document.querySelector('input[name="csrf"]')?.value || '');
+        try {
+            const response = await fetch('/validate-signature.php', {method: 'POST', body: form, credentials: 'same-origin'});
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Prüfung fehlgeschlagen.');
+            const signature = (data.signatures || [])[0] || {};
+            const summary = data.validationSummary || {};
+            const rows = [
+                ['Dokument', data.filename || file.name],
+                ['Gesamtergebnis', data.valid === true ? 'Gültig' : 'Nicht gültig'],
+                ['Dokument unverändert', data.documentIntact === true ? 'Ja' : 'Nein'],
+                ['Unterzeichner', signature.signerName || signature.signerDn || 'Nicht angegeben'],
+                ['Signaturstufe', signature.signatureLevel || 'Nicht angegeben'],
+                ['Signatur intakt', signature.signatureIntact === true ? 'Ja' : 'Nein'],
+                ['Zertifikat gültig', signature.certValid === true ? 'Ja' : 'Nein'],
+                ['Widerrufsprüfung', signature.revocationOk === true ? 'OK' : 'Nicht bestätigt'],
+                ['Zeitstempel', signature.timestampValid === true ? 'Gültig' : 'Nicht bestätigt'],
+                ['Qualifizierte Signatur', summary.hasQualifiedSignature === true ? 'Ja' : 'Nein'],
+                ['Prüfzeitpunkt', data.validatedAt || 'Nicht angegeben']
+            ];
+            signatureResult.replaceChildren();
+            const heading = document.createElement('h3');
+            heading.textContent = 'Ergebnis der Signaturprüfung';
+            signatureResult.appendChild(heading);
+            const status = document.createElement('p');
+            status.className = data.valid === true ? 'signature-status good' : 'signature-status bad';
+            status.textContent = data.valid === true ? 'Signaturprüfung erfolgreich' : 'Signatur nicht vollständig gültig';
+            signatureResult.appendChild(status);
+            const table = document.createElement('dl');
+            rows.forEach(([label, value]) => {
+                const term = document.createElement('dt'); term.textContent = label;
+                const detail = document.createElement('dd'); detail.textContent = String(value);
+                table.append(term, detail);
+            });
+            signatureResult.appendChild(table);
+            if (signature.timestampValid !== true) {
+                const note = document.createElement('p');
+                note.className = 'signature-warning';
+                note.textContent = 'Hinweis: Sealium hat keinen gültigen kryptografischen Zeitstempel bestätigt. Das ist getrennt vom Ergebnis der Signaturprüfung zu betrachten.';
+                signatureResult.appendChild(note);
+            }
+        } catch (error) {
+            signatureResult.className = 'signature-result signature-error';
+            signatureResult.textContent = error.message || 'Die Signaturprüfung ist fehlgeschlagen.';
+        } finally {
+            signatureFile.value = '';
+        }
+    });
+}
