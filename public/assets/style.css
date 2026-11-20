@@ -650,6 +650,8 @@
     font-weight: 650;
 }
 .pdf-chip-verify, .pdf-chip-remove {
+    display: grid;
+    place-items: center;
     flex: 0 0 25px;
     width: 25px;
     border: 0;
@@ -658,6 +660,15 @@
     color: #45617f;
     cursor: pointer;
     font-size: 16px;
+}
+.pdf-chip-verify svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 .pdf-chip-remove { color: #a83228; font-size: 19px; }
 .pdf-chip-verify:hover, .pdf-chip-remove:hover { background: #e5eef8; }
