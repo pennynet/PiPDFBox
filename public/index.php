@@ -551,7 +551,7 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF mit der D-TRUST-Signaturkarte digital signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1">
-                        Sichtbaren Stempel auf zusätzlicher Schlussseite anzeigen
+                        Sichtbaren Stempel anfügen
                     </label>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
