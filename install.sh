@@ -112,6 +112,9 @@ REQUIRED_PACKAGES=(
     php8.4-mbstring
     php8.4-zip
     ghostscript
+    libreoffice-writer
+    libreoffice-calc
+    libreoffice-impress
     qpdf
     poppler-utils
     python3
@@ -178,6 +181,7 @@ check_dependencies() {
     phpenmod -v 8.4 zip || { error "PHP-Erweiterung zip konnte nicht aktiviert werden."; return 1; }
     systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
     command -v ocrmypdf >/dev/null || { error "OCRmyPDF ist nicht verfügbar."; return 1; }
+    command -v libreoffice >/dev/null || { error "LibreOffice ist nicht verfügbar."; return 1; }
     command -v tesseract >/dev/null || { error "Tesseract ist nicht verfügbar."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'deu' || { error "Tesseract-Sprachpaket Deutsch fehlt."; return 1; }
     tesseract --list-langs 2>/dev/null | grep -qx 'eng' || { error "Tesseract-Sprachpaket Englisch fehlt."; return 1; }
