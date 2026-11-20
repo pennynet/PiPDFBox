@@ -144,6 +144,24 @@ REQUIRED_PACKAGES=(
     zlib1g-dev
 )
 
+install_libreoffice() {
+    echo
+    info "Installiere LibreOffice für Word-, Excel- und PowerPoint-Dateien ..."
+    apt-get update || {
+        error "Paketlisten konnten nicht aktualisiert werden. LibreOffice wurde nicht installiert."
+        return 1
+    }
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libreoffice-writer libreoffice-calc libreoffice-impress || {
+        error "LibreOffice-Pakete konnten nicht installiert werden. Bitte die apt-Fehlermeldung prüfen."
+        return 1
+    }
+    command -v libreoffice >/dev/null || {
+        error "LibreOffice wurde installiert, aber der Befehl 'libreoffice' ist nicht verfügbar."
+        return 1
+    }
+    info "LibreOffice ist installiert: $(command -v libreoffice)"
+}
+
 check_dependencies() {
     local missing=() package
     echo
@@ -706,6 +724,9 @@ update_app() {
     # Zuerst den aktuellen Installer und Anwendungscode laden. Die danach
     # ausgeführte Paketprüfung verwendet so die aktuelle Abhängigkeitsliste.
     download_app_from_github || return 1
+    # Office-Konvertierung separat installieren, damit ein Fehler bei einem
+    # anderen optionalen Paket die LibreOffice-Installation nicht verhindert.
+    install_libreoffice || return 1
     check_dependencies || return 1
     phpenmod -v 8.4 zip || { error "PHP-ZIP konnte nicht aktiviert werden."; return 1; }
     systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
