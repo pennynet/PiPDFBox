@@ -155,13 +155,21 @@ function renderFiles() {
         name.textContent = list.dataset.resultName;
         open.append(icon, name);
         open.addEventListener('click', () => openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName));
+        const reuse = document.createElement('button');
+        reuse.type = 'button';
+        reuse.className = 'pdf-chip-reuse';
+        reuse.textContent = '↳';
+        reuse.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+        reuse.setAttribute('aria-label', 'Ergebnisdatei zur weiteren Verarbeitung übernehmen');
+        reuse.addEventListener('click', () => reuseResultForProcessing(reuse));
+
         const download = document.createElement('a');
         download.className = 'pdf-chip-download';
         download.href = list.dataset.resultUrl;
         download.textContent = '↓';
         download.title = 'Ergebnisdatei herunterladen';
         download.setAttribute('aria-label', 'Ergebnisdatei herunterladen');
-        output.append(open, download);
+        output.append(open, reuse, download);
 
         if (list.dataset.resultAction === 'sign') {
             const verify = document.createElement('button');
@@ -398,6 +406,25 @@ function showSignatureMessage(message, isError = false) {
     paragraph.className = isError ? 'signature-error' : '';
     paragraph.textContent = message;
     signatureResult.appendChild(paragraph);
+}
+
+async function reuseResultForProcessing(button) {
+    button.disabled = true;
+    button.title = 'Wird übernommen …';
+    try {
+        const response = await fetch(list.dataset.resultUrl, {credentials:'same-origin', cache:'no-store'});
+        if (!response.ok) throw new Error('Ergebnisdatei konnte nicht geladen werden.');
+        const blob = await response.blob();
+        const name = list.dataset.resultName || 'pipdfbox-ergebnis.pdf';
+        const file = new File([blob], name, {type:'application/pdf', lastModified:Date.now()});
+        acceptFiles([file]);
+        const firstTask = document.querySelector('.tool-grid');
+        firstTask?.scrollIntoView({behavior:'smooth', block:'nearest'});
+    } catch (error) {
+        button.disabled = false;
+        button.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+        alert(error.message || 'Ergebnisdatei konnte nicht übernommen werden.');
+    }
 }
 
 async function validateResultPdf() {
