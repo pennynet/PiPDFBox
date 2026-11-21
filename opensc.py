@@ -639,7 +639,10 @@ class OpenSCPdfSigner:
                     pass
             if isinstance(exc, OpenSCPdfSigningError):
                 raise
-            raise OpenSCPdfSigningError("PDF-Signierung fehlgeschlagen") from exc
+            detail = str(exc).strip() or "Keine weitere Fehlerbeschreibung verfügbar"
+            raise OpenSCPdfSigningError(
+                f"PDF-Signierung fehlgeschlagen ({type(exc).__name__}): {detail[:300]}"
+            ) from exc
 
         return output_pdf
 
@@ -757,8 +760,14 @@ def main() -> int:
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
         return 1
-    except Exception:
-        print("PDF-Signierung fehlgeschlagen", file=sys.stderr)
+    except Exception as exc:
+        # B-LTA-/pyHanko-Fehler für die Diagnose sichtbar machen, ohne
+        # PIN-/CAN-Werte oder Zertifikatsinhalte auszugeben.
+        detail = str(exc).strip() or "Keine weitere Fehlerbeschreibung verfügbar"
+        print(
+            f"PDF-Signierung fehlgeschlagen ({type(exc).__name__}): {detail[:300]}",
+            file=sys.stderr,
+        )
         return 1
 
     print(signed_pdf.name)
