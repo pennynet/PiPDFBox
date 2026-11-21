@@ -437,14 +437,15 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                # Der RFC-3161-Zeitstempel ist unabhängig vom sichtbaren
-                # Stempel und kann separat aktiviert oder deaktiviert werden.
+                # PAdES B-LTA bettet Validierungsdaten in das DSS ein und hängt
+                # einen zusätzlichen Dokumentzeitstempel an. Die Root-Zertifikate
+                # der erfolgreich gebildeten Validierungspfade werden durch
+                # ExternalSigner.embed_roots (standardmäßig True) mit eingebettet.
                 timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
                     timestamper=timestamper,
-                    embed_roots=True,
                 )
                 with output_pdf.open("xb") as destination:
                     created_output = True
