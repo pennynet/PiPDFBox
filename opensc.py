@@ -176,6 +176,16 @@ SIGNATURE_ROOT_LABEL = "Root-CA-Zertifikat fuer Signatur"
 SIGNATURE_CA_FILE = CERTIFICATE_DIR / "dtrust-signature-ca.der"
 SIGNATURE_ROOT_FILE = CERTIFICATE_DIR / "dtrust-signature-root.der"
 
+# BaltStamp Root CA 2026 is pinned by its SHA-256 fingerprint. The certificate
+# is fetched from the AIA URLs in the official issuing certificate and checked
+# against this pin before it is trusted.
+BALTSTAMP_ROOT_URLS = (
+    "http://pki.baltstamp.lt/baltstamp-root-ca.crt",
+    "http://backup-pki.baltstamp.lt/baltstamp-root-ca.crt",
+)
+BALTSTAMP_ROOT_SHA256 = "4cdadb86797a66f5ac4166d22d052b1cd7c223e800dd9553b7bdf3619d4a7a80"
+BALTSTAMP_ROOT_FILE = CERTIFICATE_DIR / "baltstamp-root-ca-2026.der"
+
 
 def _read_card_certificate(label: str, destination: Path) -> bytes:
     """Export one public CA certificate by its unique PKCS#11 label."""
@@ -337,6 +347,89 @@ def load_dtrust_ca_chain(
     except OpenSCPdfSigningError:
         raise
     return signature_ca, root_ca
+
+def load_baltstamp_ca_chain(timestamper):
+    """Load the TSA intermediate from the TSA response and a pinned root CA."""
+    try:
+        asyncio.run(timestamper._ensure_dummy())
+        tsa_certificates = list(timestamper._certs.values())
+        intermediate_candidates = list(timestamper.cert_registry.certs.values())
+        tsa_issuer_names = {cert.issuer for cert in tsa_certificates}
+        intermediate_asn1 = next(
+            cert for cert in intermediate_candidates
+            if cert.subject in tsa_issuer_names
+            and "BaltStamp Issuing CA 2026" in cert.subject.human_friendly
+        )
+        intermediate_der = intermediate_asn1.dump()
+        intermediate = crypto_x509.load_der_x509_certificate(intermediate_der)
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "BaltStamp-Zwischenzertifikat konnte nicht aus der TSA-Antwort gelesen werden"
+        ) from exc
+
+    root_der = None
+    try:
+        cached = BALTSTAMP_ROOT_FILE.read_bytes()
+        cached_root = crypto_x509.load_der_x509_certificate(cached)
+        if cached_root.fingerprint(__import__(
+            "cryptography.hazmat.primitives.hashes", fromlist=["SHA256"]
+        ).SHA256()).hex() == BALTSTAMP_ROOT_SHA256:
+            root_der = cached
+    except (OSError, ValueError):
+        pass
+
+    if root_der is None:
+        from cryptography.hazmat.primitives import hashes
+        import urllib.request
+
+        last_error = None
+        for url in BALTSTAMP_ROOT_URLS:
+            try:
+                request = urllib.request.Request(
+                    url, headers={"User-Agent": "PiPDFBox"}
+                )
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    candidate = response.read()
+                try:
+                    root = crypto_x509.load_der_x509_certificate(candidate)
+                except ValueError:
+                    root = crypto_x509.load_pem_x509_certificate(candidate)
+                if root.fingerprint(hashes.SHA256()).hex() != BALTSTAMP_ROOT_SHA256:
+                    raise ValueError("BaltStamp-Root-Fingerabdruck stimmt nicht")
+                root_der = root.public_bytes(__import__(
+                    "cryptography.hazmat.primitives.serialization",
+                    fromlist=["Encoding"]
+                ).Encoding.DER)
+                temp_path = BALTSTAMP_ROOT_FILE.with_suffix(".tmp")
+                temp_path.write_bytes(root_der)
+                os.chmod(temp_path, 0o600)
+                os.replace(temp_path, BALTSTAMP_ROOT_FILE)
+                break
+            except Exception as exc:
+                last_error = exc
+        if root_der is None:
+            raise OpenSCPdfSigningError(
+                "BaltStamp-Root-CA konnte nicht sicher geladen werden"
+            ) from last_error
+
+    try:
+        from cryptography.hazmat.primitives import hashes
+        root = crypto_x509.load_der_x509_certificate(root_der)
+        if intermediate.issuer != root.subject:
+            raise ValueError("Aussteller der BaltStamp-Zwischen-CA passt nicht")
+        intermediate.verify_directly_issued_by(root)
+        root.verify_directly_issued_by(root)
+        if root.fingerprint(hashes.SHA256()).hex() != BALTSTAMP_ROOT_SHA256:
+            raise ValueError("BaltStamp-Root-Fingerabdruck stimmt nicht")
+        return (
+            asn1_x509.Certificate.load(intermediate_der),
+            asn1_x509.Certificate.load(root_der),
+        )
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "BaltStamp-Zertifikatskette konnte nicht verifiziert werden"
+        ) from exc
+
 
 def _inherited_page_value(page, key: str):
     """Read a page attribute, following the page tree for inherited values."""
@@ -580,13 +673,15 @@ class OpenSCPdfSigner:
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
 
+        timestamper = HTTPTimeStamper(tsa_url) if (use_timestamp or use_b_lta) else None
         if use_b_lta:
             signature_ca, root_ca = load_dtrust_ca_chain(
                 self._certificate.dump()
             )
+            tsa_ca, tsa_root = load_baltstamp_ca_chain(timestamper)
             validation_context = ValidationContext(
-                trust_roots=[root_ca],
-                other_certs=[signature_ca],
+                trust_roots=[root_ca, tsa_root],
+                other_certs=[signature_ca, tsa_ca],
                 allow_fetching=True,
             )
         else:
@@ -622,7 +717,6 @@ class OpenSCPdfSigner:
                 # B-LTA bettet Validierungsdaten in das DSS ein und hängt einen
                 # zusätzlichen Dokumentzeitstempel an. Normales PAdES bleibt ohne
                 # DSS-Erweiterung und ohne Zeitstempel.
-                timestamper = HTTPTimeStamper(tsa_url) if (use_timestamp or use_b_lta) else None
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
