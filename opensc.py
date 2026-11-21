@@ -394,7 +394,7 @@ class OpenSCPdfSigner:
 
     def sign_pdf(
         self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False,
-        use_timestamp: bool = True,
+        use_timestamp: bool = False, use_b_lta: bool = False,
         tsa_url: str = "http://tsa2.baltstamp.lt",
     ) -> Path:
         if not input_pdf.is_file():
@@ -408,15 +408,15 @@ class OpenSCPdfSigner:
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
 
-        validation_context = ValidationContext(allow_fetching=True)
+        validation_context = ValidationContext(allow_fetching=True) if use_b_lta else None
         metadata = signers.PdfSignatureMetadata(
             field_name="Signature1",
             md_algorithm="sha256",
             reason="Signiert mit D-TRUST",
             subfilter=SigSeedSubFilter.PADES,
             validation_context=validation_context,
-            embed_validation_info=True,
-            use_pades_lta=True,
+            embed_validation_info=use_b_lta,
+            use_pades_lta=use_b_lta,
         )
         external_signer = _OpenSCExternalSigner(
             self._certificate,
@@ -437,11 +437,10 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                # PAdES B-LTA bettet Validierungsdaten in das DSS ein und hängt
-                # einen zusätzlichen Dokumentzeitstempel an. Die Root-Zertifikate
-                # der erfolgreich gebildeten Validierungspfade werden durch
-                # ExternalSigner.embed_roots (standardmäßig True) mit eingebettet.
-                timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
+                # B-LTA bettet Validierungsdaten in das DSS ein und hängt einen
+                # zusätzlichen Dokumentzeitstempel an. Normales PAdES bleibt ohne
+                # DSS-Erweiterung und ohne Zeitstempel.
+                timestamper = HTTPTimeStamper(tsa_url) if (use_timestamp or use_b_lta) else None
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
@@ -515,7 +514,7 @@ class OpenSCPdfSigner:
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Aufruf: opensc.py EINGABE.pdf AUSGABE [--profile=pades|cades] [--visible-stamp] [--timestamp] [--tsa-url=URL]",
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE [--profile=pades|cades] [--visible-stamp] [--b-lta] [--timestamp] [--tsa-url=URL]",
             file=sys.stderr,
         )
         return 2
@@ -525,12 +524,13 @@ def main() -> int:
     options = sys.argv[3:]
     visible_stamp = "--visible-stamp" in options
     use_timestamp = "--timestamp" in options
+    use_b_lta = "--b-lta" in options
     profile_options = [arg[len("--profile="):] for arg in options if arg.startswith("--profile=")]
     profile = profile_options[0] if profile_options else "pades"
     tsa_options = [arg[len("--tsa-url="):] for arg in options if arg.startswith("--tsa-url=")]
     unknown_options = [
         arg for arg in options
-        if arg not in ("--visible-stamp", "--timestamp") and not arg.startswith("--tsa-url=") and not arg.startswith("--profile=")
+        if arg not in ("--visible-stamp", "--timestamp", "--b-lta") and not arg.startswith("--tsa-url=") and not arg.startswith("--profile=")
     ]
     if unknown_options or len(tsa_options) > 1 or len(profile_options) > 1 or profile not in ("pades", "cades"):
         print("Ungültige Signieroption.", file=sys.stderr)
@@ -548,6 +548,9 @@ def main() -> int:
         return 2
     if profile == "cades" and visible_stamp:
         print("Ein sichtbarer Stempel ist bei einer abgetrennten CAdES-Signatur nicht möglich.", file=sys.stderr)
+        return 2
+    if profile == "cades" and use_b_lta:
+        print("B-LTA ist nur für PAdES verfügbar.", file=sys.stderr)
         return 2
     if not use_timestamp and tsa_options:
         print("Eine Zeitserver-URL kann nur mit --timestamp angegeben werden.", file=sys.stderr)
@@ -567,7 +570,7 @@ def main() -> int:
         else:
             signed_pdf = signer.sign_pdf(
                 input_pdf, output_pdf, visible_stamp=visible_stamp,
-                use_timestamp=use_timestamp, tsa_url=tsa_url
+                use_timestamp=use_timestamp, use_b_lta=use_b_lta, tsa_url=tsa_url
             )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
