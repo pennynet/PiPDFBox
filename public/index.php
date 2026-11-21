@@ -803,13 +803,13 @@ $result = $_SESSION['result'] ?? null;
                         Sichtbarer Stempel
                     </label>
                     <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                        <label class="option-check" style="display:inline-flex; align-items:center; margin:0;">
-                            <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
-                            PAdES
+                        <label class="option-check" style="display:inline-flex; align-items:center; gap:10px; margin:0;">
+                            <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked style="width:14px; min-width:14px; margin:0;">
+                            <span>PAdES</span>
                         </label>
-                        <label class="option-check" style="display:inline-flex; align-items:center; margin:0;">
-                            <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
-                            B-LTA
+                        <label class="option-check" style="display:inline-flex; align-items:center; gap:10px; margin:0;">
+                            <input type="checkbox" name="b_lta" value="1" id="sign_b_lta" style="width:14px; min-width:14px; margin:0;">
+                            <span>B-LTA</span>
                         </label>
                     </div>
                     <label class="option-check">
