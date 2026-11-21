@@ -798,23 +798,23 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDF signieren</h3>
                     <p>PDF qualifiziert elektronisch signieren.</p>
-                    <label class="option-check">
+                    <label class="option-check sign-option">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Sichtbarer Stempel
+                        <span>Sichtbarer Stempel</span>
                     </label>
                     <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                        <label class="option-check" style="display:inline-flex; align-items:center; gap:10px; margin:0;">
+                        <label class="option-check sign-option">
                             <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
                             <span>PAdES</span>
                         </label>
-                        <label class="option-check" style="display:inline-flex; align-items:center; gap:10px; margin:0;">
+                        <label class="option-check sign-option">
                             <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
                             <span>B-LTA</span>
                         </label>
                     </div>
-                    <label class="option-check">
+                    <label class="option-check sign-option">
                         <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
-                        CAdES (separate .p7s-Datei)
+                        <span>CAdES (separate .p7s-Datei)</span>
                     </label>
                     <input type="hidden" name="sign_profile" id="sign_profile" value="pades">
                     <button class="task-button" type="submit" name="action" value="sign">
