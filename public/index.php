@@ -792,7 +792,7 @@ $result = $_SESSION['result'] ?? null;
                     </label>
                     <label class="option-check">
                         <input type="checkbox" name="number_interleave" value="1">
-                        Gleich nummerieren
+                        Gleich paginieren
                     </label>
                     <button class="task-button" type="submit" name="action" value="interleave">
                         PDFs verschachteln
