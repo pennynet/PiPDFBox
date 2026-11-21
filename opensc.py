@@ -552,8 +552,8 @@ def main() -> int:
     if profile == "cades" and use_b_lta:
         print("B-LTA ist nur für PAdES verfügbar.", file=sys.stderr)
         return 2
-    if not use_timestamp and tsa_options:
-        print("Eine Zeitserver-URL kann nur mit --timestamp angegeben werden.", file=sys.stderr)
+    if not (use_timestamp or use_b_lta) and tsa_options:
+        print("Eine Zeitserver-URL kann nur mit --timestamp oder --b-lta angegeben werden.", file=sys.stderr)
         return 2
 
     try:
