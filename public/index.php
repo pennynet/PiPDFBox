@@ -792,7 +792,7 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Annotation – sichtbaren Stempel anbringen
+                        Sichtbarer Stempel
                     </label>
                     <label class="option-check">
                         <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
@@ -800,10 +800,9 @@ $result = $_SESSION['result'] ?? null;
                     </label>
                     <label class="option-check">
                         <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
-                        CAdES (separate .p7s-Signaturdatei)
+                        CAdES (separate .p7s-Datei)
                     </label>
                     <input type="hidden" name="sign_profile" id="sign_profile" value="pades">
-                    <p class="muted">PAdES und CAdES schließen sich gegenseitig aus. Für B-LTA wird der konfigurierte Zeitstempelserver zwingend verwendet.</p>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
                     </button>
