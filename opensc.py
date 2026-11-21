@@ -60,7 +60,7 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
         certificate: asn1_x509.Certificate,
         signature_size: int,
     ) -> None:
-        super().__init__(signing_cert=certificate, cert_registry=None)
+        super().__init__(signing_cert=certificate, cert_registry=None, embed_roots=True)
         self._signature_size = signature_size
 
     async def async_sign_raw(
