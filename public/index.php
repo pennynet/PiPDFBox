@@ -859,7 +859,7 @@ $result = $_SESSION['result'] ?? null;
                             value="1"
                             <?= !empty($config['parallel_gs']) ? 'checked' : '' ?>
                         >
-                        Parallelverarbeitung mit Ghostscript
+                        Parallelverarbeitung
                     </label>
                     <label class="option-label" for="compress_profile">Komprimierungsstärke</label>
                     <select id="compress_profile" name="compress_profile">
