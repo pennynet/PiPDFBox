@@ -402,18 +402,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     if (!$error) {
 
+                        $signProfile = (string)($_POST['sign_profile'] ?? 'pades');
+                        if (!in_array($signProfile, ['pades', 'cades'], true)) {
+                            $signProfile = 'pades';
+                        }
+                        $signOutput = $signProfile === 'cades' ? 'signiert.pdf.p7s' : 'signiert.pdf';
                         $args = $op === 'sign'
-                            ? [$paths[0], $dir . '/signiert.pdf']
+                            ? [$paths[0], $dir . '/' . $signOutput]
                             : [$op, $dir];
 
                         if ($op === 'sign') {
-                            if (($_POST['visible_stamp'] ?? '') === '1') {
+                            $args[] = '--profile=' . $signProfile;
+                            if ($signProfile === 'pades' && ($_POST['visible_stamp'] ?? '') === '1') {
                                 $args[] = '--visible-stamp';
                             }
-                            if (($_POST['use_timestamp'] ?? '') === '1') {
-                                $args[] = '--timestamp';
-                                $args[] = '--tsa-url=' . $selectedTsaUrl;
-                            }
+                            // PAdES B-LTA requires a document timestamp; CAdES uses one as well.
+                            $args[] = '--timestamp';
+                            $args[] = '--tsa-url=' . $selectedTsaUrl;
                         }
 
                         if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
@@ -785,12 +790,18 @@ $result = $_SESSION['result'] ?? null;
                     <p>PDF qualifiziert elektronisch signieren.</p>
                     <label class="option-check">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Sichtbaren Stempel anbringen
+                        Annotation – sichtbaren Stempel anbringen
                     </label>
                     <label class="option-check">
-                        <input type="checkbox" name="use_timestamp" value="1" id="use_timestamp" checked>
-                        Zeitstempelserver nutzen
+                        <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
+                        PAdES (B-LTA)
                     </label>
+                    <label class="option-check">
+                        <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
+                        CAdES (separate .p7s-Signaturdatei)
+                    </label>
+                    <input type="hidden" name="sign_profile" id="sign_profile" value="pades">
+                    <p class="muted">PAdES und CAdES schließen sich gegenseitig aus. Für B-LTA wird der konfigurierte Zeitstempelserver zwingend verwendet.</p>
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
                     </button>
@@ -943,6 +954,28 @@ $result = $_SESSION['result'] ?? null;
 </main>
 
 <script src="/assets/app.js?v=44"></script>
+<script>
+(() => {
+    const pades = document.getElementById("sign_profile_pades");
+    const cades = document.getElementById("sign_profile_cades");
+    const profile = document.getElementById("sign_profile");
+    const annotation = document.getElementById("visible_stamp");
+    if (!pades || !cades || !profile || !annotation) return;
+    const sync = (changed) => {
+        if (changed === cades && cades.checked) pades.checked = false;
+        if (changed === pades && pades.checked) cades.checked = false;
+        if (!pades.checked && !cades.checked) {
+            (changed === pades ? cades : pades).checked = true;
+        }
+        profile.value = cades.checked ? "cades" : "pades";
+        annotation.disabled = cades.checked;
+        if (cades.checked) annotation.checked = false;
+    };
+    pades.addEventListener("change", () => sync(pades));
+    cades.addEventListener("change", () => sync(cades));
+    sync(pades);
+})();
+</script>
 
 </body>
 </html>
