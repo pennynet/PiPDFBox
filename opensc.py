@@ -8,6 +8,7 @@ by this program.
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -165,6 +166,177 @@ def read_signing_certificate() -> bytes:
         raise OpenSCPdfSigningError("Das Signaturzertifikat ist leer")
     return certificate_der
 
+
+
+# Public D-TRUST CA certificates are persistent application data, not
+# temporary signing material. The directory is owned by www-data.
+CERTIFICATE_DIR = Path("/var/lib/pipdfbox/certificates")
+SIGNATURE_CA_LABEL = "CA-Zertifikat fuer Signatur"
+SIGNATURE_ROOT_LABEL = "Root-CA-Zertifikat fuer Signatur"
+SIGNATURE_CA_FILE = CERTIFICATE_DIR / "dtrust-signature-ca.der"
+SIGNATURE_ROOT_FILE = CERTIFICATE_DIR / "dtrust-signature-root.der"
+
+
+def _read_card_certificate(label: str, destination: Path) -> bytes:
+    """Export one public CA certificate by its unique PKCS#11 label."""
+    command = [
+        str(PKCS11_TOOL),
+        "--module", str(PKCS11_MODULE),
+        "--slot", str(SLOT_ID),
+        "--read-object",
+        "--type", "cert",
+        "--label", label,
+        "--output-file", str(destination),
+    ]
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=120,
+        )
+        certificate_der = destination.read_bytes()
+    except (OSError, subprocess.SubprocessError):
+        raise OpenSCPdfSigningError(
+            "D-TRUST-CA-Zertifikat konnte nicht von der Karte gelesen werden"
+        ) from None
+    if not certificate_der:
+        raise OpenSCPdfSigningError("Ein D-TRUST-CA-Zertifikat ist leer")
+    return certificate_der
+
+
+def _parse_ca_certificate(certificate_der: bytes):
+    """Parse a DER certificate and ensure it is a CA certificate."""
+    try:
+        certificate = crypto_x509.load_der_x509_certificate(certificate_der)
+        constraints = certificate.extensions.get_extension_for_class(
+            crypto_x509.BasicConstraints
+        ).value
+        usage = certificate.extensions.get_extension_for_class(
+            crypto_x509.KeyUsage
+        ).value
+        if not constraints.ca or not usage.key_cert_sign:
+            raise ValueError("certificate is not a signing CA")
+        return certificate, asn1_x509.Certificate.load(certificate_der)
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "Ein gespeichertes D-TRUST-CA-Zertifikat ist ungültig"
+        ) from exc
+
+
+def _ca_chain_matches(
+    signing_certificate_der: bytes,
+    signature_ca_der: bytes,
+    root_ca_der: bytes,
+) -> bool:
+    """Check certificate issuer/subject links before trusting the cached pair."""
+    try:
+        signing_certificate = crypto_x509.load_der_x509_certificate(
+            signing_certificate_der
+        )
+        signature_ca, _ = _parse_ca_certificate(signature_ca_der)
+        root_ca, _ = _parse_ca_certificate(root_ca_der)
+        return (
+            signing_certificate.issuer == signature_ca.subject
+            and signature_ca.issuer == root_ca.subject
+            and root_ca.issuer == root_ca.subject
+        )
+    except Exception:
+        return False
+
+
+def load_dtrust_ca_chain(
+    signing_certificate_der: bytes,
+) -> tuple[asn1_x509.Certificate, asn1_x509.Certificate]:
+    """Load cached D-TRUST CAs, exporting missing or inconsistent files once."""
+    if not PKCS11_MODULE.is_file() or not PKCS11_TOOL.is_file():
+        raise OpenSCPdfSigningError("OpenSC 0.27.1 ist nicht vollständig installiert")
+
+    try:
+        CERTIFICATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+        CERTIFICATE_DIR.chmod(0o700)
+    except OSError:
+        raise OpenSCPdfSigningError(
+            "Zertifikatsspeicher kann nicht angelegt oder geöffnet werden"
+        ) from None
+
+    def cached(path: Path) -> bytes | None:
+        try:
+            data = path.read_bytes()
+            _parse_ca_certificate(data)
+            return data
+        except (OSError, OpenSCPdfSigningError):
+            return None
+
+    signature_ca_der = cached(SIGNATURE_CA_FILE)
+    root_ca_der = cached(SIGNATURE_ROOT_FILE)
+
+    # If either file is absent or malformed, export the missing item(s).
+    # A temporary file in the target directory allows atomic replacement.
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="dtrust-ca-", dir=CERTIFICATE_DIR
+        ) as tmp:
+            tmp_dir = Path(tmp)
+            if signature_ca_der is None:
+                temp_file = tmp_dir / "signature-ca.der"
+                signature_ca_der = _read_card_certificate(
+                    SIGNATURE_CA_LABEL, temp_file
+                )
+                _parse_ca_certificate(signature_ca_der)
+                os.replace(temp_file, SIGNATURE_CA_FILE)
+            if root_ca_der is None:
+                temp_file = tmp_dir / "signature-root.der"
+                root_ca_der = _read_card_certificate(
+                    SIGNATURE_ROOT_LABEL, temp_file
+                )
+                _parse_ca_certificate(root_ca_der)
+                os.replace(temp_file, SIGNATURE_ROOT_FILE)
+    except OSError:
+        raise OpenSCPdfSigningError(
+            "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
+        ) from None
+
+    if not _ca_chain_matches(
+        signing_certificate_der, signature_ca_der, root_ca_der
+    ):
+        # The card objects are authoritative for retrieval, but never accept
+        # a cached pair whose issuer chain does not match the signing cert.
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="dtrust-ca-", dir=CERTIFICATE_DIR
+            ) as tmp:
+                tmp_dir = Path(tmp)
+                ca_tmp = tmp_dir / "signature-ca.der"
+                root_tmp = tmp_dir / "signature-root.der"
+                signature_ca_der = _read_card_certificate(
+                    SIGNATURE_CA_LABEL, ca_tmp
+                )
+                root_ca_der = _read_card_certificate(
+                    SIGNATURE_ROOT_LABEL, root_tmp
+                )
+                _parse_ca_certificate(signature_ca_der)
+                _parse_ca_certificate(root_ca_der)
+                if not _ca_chain_matches(
+                    signing_certificate_der, signature_ca_der, root_ca_der
+                ):
+                    raise OpenSCPdfSigningError(
+                        "Die D-TRUST-Zertifikatskette passt nicht zum Signaturzertifikat"
+                    )
+                os.replace(ca_tmp, SIGNATURE_CA_FILE)
+                os.replace(root_tmp, SIGNATURE_ROOT_FILE)
+        except OSError:
+            raise OpenSCPdfSigningError(
+                "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
+            ) from None
+
+    try:
+        _, signature_ca = _parse_ca_certificate(signature_ca_der)
+        _, root_ca = _parse_ca_certificate(root_ca_der)
+    except OpenSCPdfSigningError:
+        raise
+    return signature_ca, root_ca
 
 def _inherited_page_value(page, key: str):
     """Read a page attribute, following the page tree for inherited values."""
@@ -408,7 +580,17 @@ class OpenSCPdfSigner:
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
 
-        validation_context = ValidationContext(allow_fetching=True) if use_b_lta else None
+        if use_b_lta:
+            signature_ca, root_ca = load_dtrust_ca_chain(
+                self._certificate.dump()
+            )
+            validation_context = ValidationContext(
+                trust_roots=[root_ca],
+                other_certs=[signature_ca],
+                allow_fetching=True,
+            )
+        else:
+            validation_context = None
         metadata = signers.PdfSignatureMetadata(
             field_name="Signature1",
             md_algorithm="sha256",
