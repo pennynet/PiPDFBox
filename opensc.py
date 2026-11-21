@@ -354,7 +354,7 @@ def load_baltstamp_ca_chain(timestamper):
         asyncio.run(timestamper._ensure_dummy())
         tsa_certificates = list(timestamper._certs.values())
         intermediate_candidates = list(timestamper.cert_registry.certs.values())
-        tsa_issuer_names = {cert.issuer for cert in tsa_certificates}
+        tsa_issuer_names = [cert.issuer for cert in tsa_certificates]
         intermediate_asn1 = next(
             cert for cert in intermediate_candidates
             if cert.subject in tsa_issuer_names
