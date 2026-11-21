@@ -18,6 +18,8 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+from certificate_store import secure_certificate_replace
+
 # pyHanko and its pinned runtime dependencies are installed here by install.sh.
 PACKAGE_DIR = Path("/opt/pipdfbox/python")
 if PACKAGE_DIR.is_dir():
@@ -295,14 +297,14 @@ def load_dtrust_ca_chain(
                     SIGNATURE_CA_LABEL, temp_file
                 )
                 _parse_ca_certificate(signature_ca_der)
-                os.replace(temp_file, SIGNATURE_CA_FILE)
+                secure_certificate_replace(temp_file, SIGNATURE_CA_FILE)
             if root_ca_der is None:
                 temp_file = tmp_dir / "signature-root.der"
                 root_ca_der = _read_card_certificate(
                     SIGNATURE_ROOT_LABEL, temp_file
                 )
                 _parse_ca_certificate(root_ca_der)
-                os.replace(temp_file, SIGNATURE_ROOT_FILE)
+                secure_certificate_replace(temp_file, SIGNATURE_ROOT_FILE)
     except OSError:
         raise OpenSCPdfSigningError(
             "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
@@ -334,8 +336,8 @@ def load_dtrust_ca_chain(
                     raise OpenSCPdfSigningError(
                         "Die D-TRUST-Zertifikatskette passt nicht zum Signaturzertifikat"
                     )
-                os.replace(ca_tmp, SIGNATURE_CA_FILE)
-                os.replace(root_tmp, SIGNATURE_ROOT_FILE)
+                secure_certificate_replace(ca_tmp, SIGNATURE_CA_FILE)
+                secure_certificate_replace(root_tmp, SIGNATURE_ROOT_FILE)
         except OSError:
             raise OpenSCPdfSigningError(
                 "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
@@ -402,8 +404,7 @@ def load_baltstamp_ca_chain(timestamper):
                 ).Encoding.DER)
                 temp_path = BALTSTAMP_ROOT_FILE.with_suffix(".tmp")
                 temp_path.write_bytes(root_der)
-                os.chmod(temp_path, 0o600)
-                os.replace(temp_path, BALTSTAMP_ROOT_FILE)
+                secure_certificate_replace(temp_path, BALTSTAMP_ROOT_FILE)
                 break
             except Exception as exc:
                 last_error = exc
