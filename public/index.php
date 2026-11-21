@@ -402,16 +402,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     if (!$error) {
 
+                        $signProfile = (string)($_POST['sign_profile'] ?? 'pades');
+                        if (!in_array($signProfile, ['pades', 'cades'], true)) {
+                            $signProfile = 'pades';
+                        }
+                        $signOutput = $signProfile === 'cades' ? 'signiert.pdf.p7s' : 'signiert.pdf';
                         $args = $op === 'sign'
-                            ? [$paths[0], $dir . '/signiert.pdf']
+                            ? [$paths[0], $dir . '/' . $signOutput]
                             : [$op, $dir];
 
                         if ($op === 'sign') {
-                            if (($_POST['visible_stamp'] ?? '') === '1') {
+                            $args[] = '--profile=' . $signProfile;
+                            if ($signProfile === 'pades' && ($_POST['visible_stamp'] ?? '') === '1') {
                                 $args[] = '--visible-stamp';
                             }
-                            if (($_POST['use_timestamp'] ?? '') === '1') {
+                            $usePadesBltA = $signProfile === 'pades' && ($_POST['b_lta'] ?? '') === '1';
+                            if ($signProfile === 'cades') {
+                                // CAdES continues to use an RFC-3161 timestamp.
                                 $args[] = '--timestamp';
+                                $args[] = '--tsa-url=' . $selectedTsaUrl;
+                            } elseif ($usePadesBltA) {
+                                $args[] = '--b-lta';
                                 $args[] = '--tsa-url=' . $selectedTsaUrl;
                             }
                         }
@@ -461,6 +472,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
                         if ($op === 'interleave' && isset($_POST['reverse_second']) && $_POST['reverse_second'] === '1') {
                             $args[] = '--reverse-second';
+                        }
+                        if ($op === 'interleave' && ($_POST['number_interleave'] ?? '') === '1') {
+                            $args[] = '--number-interleave';
                         }
 
                         $workerOutput = '';
@@ -544,7 +558,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 ];
 
                                 $notice = $op === 'sign'
-                                    ? 'PDF wurde erfolgreich signiert.'
+                                    ? ($signProfile === 'cades'
+                                        ? 'CAdES-Signaturdatei wurde erfolgreich erstellt.'
+                                        : ($usePadesBltA
+                                        ? 'PDF wurde erfolgreich mit PAdES B-LTA signiert.'
+                                        : 'PDF wurde erfolgreich mit PAdES signiert.'))
                                     : 'Verarbeitung abgeschlossen.';
                             } elseif (!$error) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
@@ -772,6 +790,10 @@ $result = $_SESSION['result'] ?? null;
                         <input type="checkbox" name="reverse_second" value="1">
                         Rückseiten-PDF umkehren
                     </label>
+                    <label class="option-check">
+                        <input type="checkbox" name="number_interleave" value="1">
+                        Gleich paginieren
+                    </label>
                     <button class="task-button" type="submit" name="action" value="interleave">
                         PDFs verschachteln
                     </button>
@@ -783,14 +805,25 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDF signieren</h3>
                     <p>PDF qualifiziert elektronisch signieren.</p>
-                    <label class="option-check">
+                    <label class="option-check sign-option">
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
-                        Sichtbaren Stempel anbringen
+                        <span>Sichtbarer Stempel</span>
                     </label>
-                    <label class="option-check">
-                        <input type="checkbox" name="use_timestamp" value="1" id="use_timestamp" checked>
-                        Zeitstempelserver nutzen
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <label class="option-check sign-option">
+                            <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
+                            <span>PAdES</span>
+                        </label>
+                        <label class="option-check sign-option">
+                            <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
+                            <span>B-LTA</span>
+                        </label>
+                    </div>
+                    <label class="option-check sign-option">
+                        <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
+                        <span>CAdES (separate .p7s-Datei)</span>
                     </label>
+                    <input type="hidden" name="sign_profile" id="sign_profile" value="pades">
                     <button class="task-button" type="submit" name="action" value="sign">
                         PDF signieren
                     </button>
@@ -826,7 +859,7 @@ $result = $_SESSION['result'] ?? null;
                             value="1"
                             <?= !empty($config['parallel_gs']) ? 'checked' : '' ?>
                         >
-                        Parallelverarbeitung mit Ghostscript
+                        Parallelverarbeitung
                     </label>
                     <label class="option-label" for="compress_profile">Komprimierungsstärke</label>
                     <select id="compress_profile" name="compress_profile">
@@ -943,6 +976,31 @@ $result = $_SESSION['result'] ?? null;
 </main>
 
 <script src="/assets/app.js?v=44"></script>
+<script>
+(() => {
+    const pades = document.getElementById("sign_profile_pades");
+    const cades = document.getElementById("sign_profile_cades");
+    const profile = document.getElementById("sign_profile");
+    const annotation = document.getElementById("visible_stamp");
+    const bLta = document.getElementById("sign_b_lta");
+    if (!pades || !cades || !profile || !annotation || !bLta) return;
+    const sync = (changed) => {
+        if (changed === cades && cades.checked) pades.checked = false;
+        if (changed === pades && pades.checked) cades.checked = false;
+        if (!pades.checked && !cades.checked) {
+            (changed === pades ? cades : pades).checked = true;
+        }
+        profile.value = cades.checked ? "cades" : "pades";
+        annotation.disabled = cades.checked;
+        if (cades.checked) annotation.checked = false;
+        bLta.disabled = cades.checked;
+        if (cades.checked) bLta.checked = false;
+    };
+    pades.addEventListener("change", () => sync(pades));
+    cades.addEventListener("change", () => sync(cades));
+    sync(pades);
+})();
+</script>
 
 </body>
 </html>

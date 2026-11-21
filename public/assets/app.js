@@ -181,30 +181,23 @@ function renderFiles() {
     if (list.dataset.resultUrl) {
         const output = document.createElement('div');
         output.className = 'pdf-chip pdf-chip-result';
+        const isZip = list.dataset.resultName.toLowerCase().endsWith('.zip');
+        const isCades = list.dataset.resultName.toLowerCase().endsWith('.p7s');
         const open = document.createElement('button');
         open.type = 'button';
         open.className = 'pdf-chip-open';
-        open.title = list.dataset.resultName + ' – Ergebnis öffnen';
-        const isZip = list.dataset.resultName.toLowerCase().endsWith('.zip');
+        open.title = list.dataset.resultName + (isZip ? ' – ZIP-Inhalt anzeigen' : ' – Ergebnis öffnen');
         const icon = document.createElement('span');
         icon.className = 'pdf-chip-icon';
-        icon.textContent = isZip ? 'ZIP' : 'PDF';
+        icon.textContent = isZip ? 'ZIP' : (isCades ? 'CMS' : 'PDF');
         const name = document.createElement('span');
         name.className = 'pdf-chip-name';
         name.textContent = list.dataset.resultName;
         open.append(icon, name);
-        open.title = list.dataset.resultName + (isZip ? ' – ZIP-Inhalt anzeigen' : ' – Ergebnis öffnen');
         open.addEventListener('click', () => {
             if (isZip) openZipBrowser();
-            else openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName);
+            else if (!isCades) openPdf(list.dataset.resultUrl + '&inline=1', list.dataset.resultName);
         });
-        const reuse = document.createElement('button');
-        reuse.type = 'button';
-        reuse.className = 'pdf-chip-reuse';
-        reuse.textContent = '↳';
-        reuse.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
-        reuse.setAttribute('aria-label', 'Ergebnisdatei zur weiteren Verarbeitung übernehmen');
-        reuse.addEventListener('click', () => reuseResultForProcessing(reuse));
 
         const download = document.createElement('a');
         download.className = 'pdf-chip-download';
@@ -212,10 +205,23 @@ function renderFiles() {
         download.textContent = '↓';
         download.title = 'Ergebnisdatei herunterladen';
         download.setAttribute('aria-label', 'Ergebnisdatei herunterladen');
-        if (isZip) output.append(open, download);
-        else output.append(open, reuse, download);
+        if (isCades) {
+            open.disabled = true;
+            open.title = 'CAdES-Signaturdatei – nicht als PDF darstellbar';
+            output.append(open, download);
+        } else {
+            const reuse = document.createElement('button');
+            reuse.type = 'button';
+            reuse.className = 'pdf-chip-reuse';
+            reuse.textContent = '↳';
+            reuse.title = 'Ergebnis als Eingabedatei weiterverarbeiten';
+            reuse.setAttribute('aria-label', 'Ergebnisdatei zur weiteren Verarbeitung übernehmen');
+            reuse.addEventListener('click', () => reuseResultForProcessing(reuse));
+            if (isZip) output.append(open, download);
+            else output.append(open, reuse, download);
+        }
 
-        if (list.dataset.resultAction === 'sign') {
+        if (list.dataset.resultAction === 'sign' && !isCades) {
             const verify = document.createElement('button');
             verify.type = 'button';
             verify.className = 'pdf-chip-verify';

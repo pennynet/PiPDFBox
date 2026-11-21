@@ -8,6 +8,7 @@ by this program.
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -16,6 +17,8 @@ import sys
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
+
+from certificate_store import secure_certificate_replace
 
 # pyHanko and its pinned runtime dependencies are installed here by install.sh.
 PACKAGE_DIR = Path("/opt/pipdfbox/python")
@@ -36,7 +39,9 @@ from pyhanko.pdf_utils.layout import (
 )
 from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import signers
+from pyhanko.sign.fields import SigSeedSubFilter
 from pyhanko.sign.timestamps import HTTPTimeStamper
+from pyhanko_certvalidator import ValidationContext
 from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
 from pyhanko.stamp.appearances import CoordinateSystem
 
@@ -58,7 +63,7 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
         certificate: asn1_x509.Certificate,
         signature_size: int,
     ) -> None:
-        super().__init__(signing_cert=certificate, cert_registry=None)
+        super().__init__(signing_cert=certificate, cert_registry=None, embed_roots=True)
         self._signature_size = signature_size
 
     async def async_sign_raw(
@@ -162,6 +167,269 @@ def read_signing_certificate() -> bytes:
     if not certificate_der:
         raise OpenSCPdfSigningError("Das Signaturzertifikat ist leer")
     return certificate_der
+
+
+
+# Public D-TRUST CA certificates are persistent application data, not
+# temporary signing material. The directory is owned by www-data.
+CERTIFICATE_DIR = Path("/var/lib/pipdfbox/certificates")
+SIGNATURE_CA_LABEL = "CA-Zertifikat fuer Signatur"
+SIGNATURE_ROOT_LABEL = "Root-CA-Zertifikat fuer Signatur"
+SIGNATURE_CA_FILE = CERTIFICATE_DIR / "dtrust-signature-ca.der"
+SIGNATURE_ROOT_FILE = CERTIFICATE_DIR / "dtrust-signature-root.der"
+
+# BaltStamp Root CA 2026 is pinned by its SHA-256 fingerprint. The certificate
+# is fetched from the AIA URLs in the official issuing certificate and checked
+# against this pin before it is trusted.
+BALTSTAMP_ROOT_URLS = (
+    "http://pki.baltstamp.lt/baltstamp-root-ca.crt",
+    "http://backup-pki.baltstamp.lt/baltstamp-root-ca.crt",
+)
+BALTSTAMP_ROOT_SHA256 = "4cdadb86797a66f5ac4166d22d052b1cd7c223e800dd9553b7bdf3619d4a7a80"
+BALTSTAMP_ROOT_FILE = CERTIFICATE_DIR / "baltstamp-root-ca-2026.der"
+
+
+def _read_card_certificate(label: str, destination: Path) -> bytes:
+    """Export one public CA certificate by its unique PKCS#11 label."""
+    command = [
+        str(PKCS11_TOOL),
+        "--module", str(PKCS11_MODULE),
+        "--slot", str(SLOT_ID),
+        "--read-object",
+        "--type", "cert",
+        "--label", label,
+        "--output-file", str(destination),
+    ]
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=120,
+        )
+        certificate_der = destination.read_bytes()
+    except (OSError, subprocess.SubprocessError):
+        raise OpenSCPdfSigningError(
+            "D-TRUST-CA-Zertifikat konnte nicht von der Karte gelesen werden"
+        ) from None
+    if not certificate_der:
+        raise OpenSCPdfSigningError("Ein D-TRUST-CA-Zertifikat ist leer")
+    return certificate_der
+
+
+def _parse_ca_certificate(certificate_der: bytes):
+    """Parse a DER certificate and ensure it is a CA certificate."""
+    try:
+        certificate = crypto_x509.load_der_x509_certificate(certificate_der)
+        constraints = certificate.extensions.get_extension_for_class(
+            crypto_x509.BasicConstraints
+        ).value
+        usage = certificate.extensions.get_extension_for_class(
+            crypto_x509.KeyUsage
+        ).value
+        if not constraints.ca or not usage.key_cert_sign:
+            raise ValueError("certificate is not a signing CA")
+        return certificate, asn1_x509.Certificate.load(certificate_der)
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "Ein gespeichertes D-TRUST-CA-Zertifikat ist ungültig"
+        ) from exc
+
+
+def _ca_chain_matches(
+    signing_certificate_der: bytes,
+    signature_ca_der: bytes,
+    root_ca_der: bytes,
+) -> bool:
+    """Check certificate issuer/subject links before trusting the cached pair."""
+    try:
+        signing_certificate = crypto_x509.load_der_x509_certificate(
+            signing_certificate_der
+        )
+        signature_ca, _ = _parse_ca_certificate(signature_ca_der)
+        root_ca, _ = _parse_ca_certificate(root_ca_der)
+        return (
+            signing_certificate.issuer == signature_ca.subject
+            and signature_ca.issuer == root_ca.subject
+            and root_ca.issuer == root_ca.subject
+        )
+    except Exception:
+        return False
+
+
+def load_dtrust_ca_chain(
+    signing_certificate_der: bytes,
+) -> tuple[asn1_x509.Certificate, asn1_x509.Certificate]:
+    """Load cached D-TRUST CAs, exporting missing or inconsistent files once."""
+    if not PKCS11_MODULE.is_file() or not PKCS11_TOOL.is_file():
+        raise OpenSCPdfSigningError("OpenSC 0.27.1 ist nicht vollständig installiert")
+
+    try:
+        CERTIFICATE_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+        CERTIFICATE_DIR.chmod(0o700)
+    except OSError:
+        raise OpenSCPdfSigningError(
+            "Zertifikatsspeicher kann nicht angelegt oder geöffnet werden"
+        ) from None
+
+    def cached(path: Path) -> bytes | None:
+        try:
+            data = path.read_bytes()
+            _parse_ca_certificate(data)
+            return data
+        except (OSError, OpenSCPdfSigningError):
+            return None
+
+    signature_ca_der = cached(SIGNATURE_CA_FILE)
+    root_ca_der = cached(SIGNATURE_ROOT_FILE)
+
+    # If either file is absent or malformed, export the missing item(s).
+    # A temporary file in the target directory allows atomic replacement.
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="dtrust-ca-", dir=CERTIFICATE_DIR
+        ) as tmp:
+            tmp_dir = Path(tmp)
+            if signature_ca_der is None:
+                temp_file = tmp_dir / "signature-ca.der"
+                signature_ca_der = _read_card_certificate(
+                    SIGNATURE_CA_LABEL, temp_file
+                )
+                _parse_ca_certificate(signature_ca_der)
+                secure_certificate_replace(temp_file, SIGNATURE_CA_FILE)
+            if root_ca_der is None:
+                temp_file = tmp_dir / "signature-root.der"
+                root_ca_der = _read_card_certificate(
+                    SIGNATURE_ROOT_LABEL, temp_file
+                )
+                _parse_ca_certificate(root_ca_der)
+                secure_certificate_replace(temp_file, SIGNATURE_ROOT_FILE)
+    except OSError:
+        raise OpenSCPdfSigningError(
+            "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
+        ) from None
+
+    if not _ca_chain_matches(
+        signing_certificate_der, signature_ca_der, root_ca_der
+    ):
+        # The card objects are authoritative for retrieval, but never accept
+        # a cached pair whose issuer chain does not match the signing cert.
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="dtrust-ca-", dir=CERTIFICATE_DIR
+            ) as tmp:
+                tmp_dir = Path(tmp)
+                ca_tmp = tmp_dir / "signature-ca.der"
+                root_tmp = tmp_dir / "signature-root.der"
+                signature_ca_der = _read_card_certificate(
+                    SIGNATURE_CA_LABEL, ca_tmp
+                )
+                root_ca_der = _read_card_certificate(
+                    SIGNATURE_ROOT_LABEL, root_tmp
+                )
+                _parse_ca_certificate(signature_ca_der)
+                _parse_ca_certificate(root_ca_der)
+                if not _ca_chain_matches(
+                    signing_certificate_der, signature_ca_der, root_ca_der
+                ):
+                    raise OpenSCPdfSigningError(
+                        "Die D-TRUST-Zertifikatskette passt nicht zum Signaturzertifikat"
+                    )
+                secure_certificate_replace(ca_tmp, SIGNATURE_CA_FILE)
+                secure_certificate_replace(root_tmp, SIGNATURE_ROOT_FILE)
+        except OSError:
+            raise OpenSCPdfSigningError(
+                "D-TRUST-CA-Zertifikate konnten nicht dauerhaft gespeichert werden"
+            ) from None
+
+    try:
+        _, signature_ca = _parse_ca_certificate(signature_ca_der)
+        _, root_ca = _parse_ca_certificate(root_ca_der)
+    except OpenSCPdfSigningError:
+        raise
+    return signature_ca, root_ca
+
+def load_baltstamp_ca_chain(timestamper):
+    """Load the TSA intermediate from the TSA response and a pinned root CA."""
+    try:
+        asyncio.run(timestamper._ensure_dummy())
+        tsa_certificates = list(timestamper._certs.values())
+        intermediate_candidates = list(timestamper.cert_registry.certs.values())
+        tsa_issuer_names = [cert.issuer for cert in tsa_certificates]
+        intermediate_asn1 = next(
+            cert for cert in intermediate_candidates
+            if cert.subject in tsa_issuer_names
+            and "BaltStamp Issuing CA 2026" in cert.subject.human_friendly
+        )
+        intermediate_der = intermediate_asn1.dump()
+        intermediate = crypto_x509.load_der_x509_certificate(intermediate_der)
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "BaltStamp-Zwischenzertifikat konnte nicht aus der TSA-Antwort gelesen werden"
+        ) from exc
+
+    root_der = None
+    try:
+        cached = BALTSTAMP_ROOT_FILE.read_bytes()
+        cached_root = crypto_x509.load_der_x509_certificate(cached)
+        if cached_root.fingerprint(__import__(
+            "cryptography.hazmat.primitives.hashes", fromlist=["SHA256"]
+        ).SHA256()).hex() == BALTSTAMP_ROOT_SHA256:
+            root_der = cached
+    except (OSError, ValueError):
+        pass
+
+    if root_der is None:
+        from cryptography.hazmat.primitives import hashes
+        import urllib.request
+
+        last_error = None
+        for url in BALTSTAMP_ROOT_URLS:
+            try:
+                request = urllib.request.Request(
+                    url, headers={"User-Agent": "PiPDFBox"}
+                )
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    candidate = response.read()
+                try:
+                    root = crypto_x509.load_der_x509_certificate(candidate)
+                except ValueError:
+                    root = crypto_x509.load_pem_x509_certificate(candidate)
+                if root.fingerprint(hashes.SHA256()).hex() != BALTSTAMP_ROOT_SHA256:
+                    raise ValueError("BaltStamp-Root-Fingerabdruck stimmt nicht")
+                root_der = root.public_bytes(__import__(
+                    "cryptography.hazmat.primitives.serialization",
+                    fromlist=["Encoding"]
+                ).Encoding.DER)
+                temp_path = BALTSTAMP_ROOT_FILE.with_suffix(".tmp")
+                temp_path.write_bytes(root_der)
+                secure_certificate_replace(temp_path, BALTSTAMP_ROOT_FILE)
+                break
+            except Exception as exc:
+                last_error = exc
+        if root_der is None:
+            raise OpenSCPdfSigningError(
+                "BaltStamp-Root-CA konnte nicht sicher geladen werden"
+            ) from last_error
+
+    try:
+        from cryptography.hazmat.primitives import hashes
+        root = crypto_x509.load_der_x509_certificate(root_der)
+        if intermediate.issuer != root.subject:
+            raise ValueError("Aussteller der BaltStamp-Zwischen-CA passt nicht")
+        intermediate.verify_directly_issued_by(root)
+        root.verify_directly_issued_by(root)
+        if root.fingerprint(hashes.SHA256()).hex() != BALTSTAMP_ROOT_SHA256:
+            raise ValueError("BaltStamp-Root-Fingerabdruck stimmt nicht")
+        return (
+            asn1_x509.Certificate.load(intermediate_der),
+            asn1_x509.Certificate.load(root_der),
+        )
+    except Exception as exc:
+        raise OpenSCPdfSigningError(
+            "BaltStamp-Zertifikatskette konnte nicht verifiziert werden"
+        ) from exc
 
 
 def _inherited_page_value(page, key: str):
@@ -392,7 +660,7 @@ class OpenSCPdfSigner:
 
     def sign_pdf(
         self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False,
-        use_timestamp: bool = True,
+        use_timestamp: bool = False, use_b_lta: bool = False,
         tsa_url: str = "http://tsa2.baltstamp.lt",
     ) -> Path:
         if not input_pdf.is_file():
@@ -406,10 +674,27 @@ class OpenSCPdfSigner:
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
 
+        timestamper = HTTPTimeStamper(tsa_url) if (use_timestamp or use_b_lta) else None
+        if use_b_lta:
+            signature_ca, root_ca = load_dtrust_ca_chain(
+                self._certificate.dump()
+            )
+            tsa_ca, tsa_root = load_baltstamp_ca_chain(timestamper)
+            validation_context = ValidationContext(
+                trust_roots=[root_ca, tsa_root],
+                other_certs=[signature_ca, tsa_ca],
+                allow_fetching=True,
+            )
+        else:
+            validation_context = None
         metadata = signers.PdfSignatureMetadata(
             field_name="Signature1",
             md_algorithm="sha256",
             reason="Signiert mit D-TRUST",
+            subfilter=SigSeedSubFilter.PADES,
+            validation_context=validation_context,
+            embed_validation_info=use_b_lta,
+            use_pades_lta=use_b_lta,
         )
         external_signer = _OpenSCExternalSigner(
             self._certificate,
@@ -430,9 +715,9 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                # Der RFC-3161-Zeitstempel ist unabhängig vom sichtbaren
-                # Stempel und kann separat aktiviert oder deaktiviert werden.
-                timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
+                # B-LTA bettet Validierungsdaten in das DSS ein und hängt einen
+                # zusätzlichen Dokumentzeitstempel an. Normales PAdES bleibt ohne
+                # DSS-Erweiterung und ohne Zeitstempel.
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
@@ -449,15 +734,67 @@ class OpenSCPdfSigner:
                     pass
             if isinstance(exc, OpenSCPdfSigningError):
                 raise
-            raise OpenSCPdfSigningError("PDF-Signierung fehlgeschlagen") from exc
+            detail = str(exc).strip() or "Keine weitere Fehlerbeschreibung verfügbar"
+            raise OpenSCPdfSigningError(
+                f"PDF-Signierung fehlgeschlagen ({type(exc).__name__}): {detail[:300]}"
+            ) from exc
 
         return output_pdf
+
+
+    def sign_cades(
+        self, input_pdf: Path, output_signature: Path,
+        use_timestamp: bool = True,
+        tsa_url: str = "http://tsa2.baltstamp.lt",
+    ) -> Path:
+        """Create a detached CAdES CMS signature for the exact PDF byte stream."""
+        if not input_pdf.is_file():
+            raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
+        if input_pdf.resolve() == output_signature.resolve():
+            raise ValueError("Eingabe und Signaturdatei müssen verschieden sein")
+        if input_pdf.resolve().parent != output_signature.resolve().parent:
+            raise ValueError("Eingabe und Signaturdatei müssen im selben Auftragsordner liegen")
+        if output_signature.name != "signiert.pdf.p7s":
+            raise ValueError("Ungültiger Name der CAdES-Ausgabedatei")
+        if output_signature.exists():
+            raise FileExistsError("Die CAdES-Signaturdatei existiert bereits")
+
+        external_signer = _OpenSCExternalSigner(
+            self._certificate,
+            self._signature_size,
+        )
+        timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
+        created_output = False
+        try:
+            with input_pdf.open("rb") as source:
+                cms_signature = asyncio.run(
+                    external_signer.async_sign_general_data(
+                        input_data=source,
+                        digest_algorithm="sha256",
+                        detached=True,
+                        use_cades=True,
+                        timestamper=timestamper,
+                    )
+                )
+            with output_signature.open("xb") as destination:
+                created_output = True
+                destination.write(cms_signature.dump())
+        except Exception as exc:
+            if created_output:
+                try:
+                    output_signature.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            if isinstance(exc, OpenSCPdfSigningError):
+                raise
+            raise OpenSCPdfSigningError("CAdES-Signierung fehlgeschlagen") from exc
+        return output_signature
 
 
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp] [--timestamp] [--tsa-url=URL]",
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE [--profile=pades|cades] [--visible-stamp] [--b-lta] [--timestamp] [--tsa-url=URL]",
             file=sys.stderr,
         )
         return 2
@@ -467,12 +804,15 @@ def main() -> int:
     options = sys.argv[3:]
     visible_stamp = "--visible-stamp" in options
     use_timestamp = "--timestamp" in options
+    use_b_lta = "--b-lta" in options
+    profile_options = [arg[len("--profile="):] for arg in options if arg.startswith("--profile=")]
+    profile = profile_options[0] if profile_options else "pades"
     tsa_options = [arg[len("--tsa-url="):] for arg in options if arg.startswith("--tsa-url=")]
     unknown_options = [
         arg for arg in options
-        if arg not in ("--visible-stamp", "--timestamp") and not arg.startswith("--tsa-url=")
+        if arg not in ("--visible-stamp", "--timestamp", "--b-lta") and not arg.startswith("--tsa-url=") and not arg.startswith("--profile=")
     ]
-    if unknown_options or len(tsa_options) > 1:
+    if unknown_options or len(tsa_options) > 1 or len(profile_options) > 1 or profile not in ("pades", "cades"):
         print("Ungültige Signieroption.", file=sys.stderr)
         return 2
     tsa_url = tsa_options[0] if tsa_options else "http://tsa2.baltstamp.lt"
@@ -486,8 +826,14 @@ def main() -> int:
     ):
         print("Ungültige Zeitserver-URL.", file=sys.stderr)
         return 2
-    if not use_timestamp and tsa_options:
-        print("Eine Zeitserver-URL kann nur mit --timestamp angegeben werden.", file=sys.stderr)
+    if profile == "cades" and visible_stamp:
+        print("Ein sichtbarer Stempel ist bei einer abgetrennten CAdES-Signatur nicht möglich.", file=sys.stderr)
+        return 2
+    if profile == "cades" and use_b_lta:
+        print("B-LTA ist nur für PAdES verfügbar.", file=sys.stderr)
+        return 2
+    if not (use_timestamp or use_b_lta) and tsa_options:
+        print("Eine Zeitserver-URL kann nur mit --timestamp oder --b-lta angegeben werden.", file=sys.stderr)
         return 2
 
     try:
@@ -497,15 +843,26 @@ def main() -> int:
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
-        signed_pdf = signer.sign_pdf(
-            input_pdf, output_pdf, visible_stamp=visible_stamp,
-            use_timestamp=use_timestamp, tsa_url=tsa_url
-        )
+        if profile == "cades":
+            signed_pdf = signer.sign_cades(
+                input_pdf, output_pdf, use_timestamp=use_timestamp, tsa_url=tsa_url
+            )
+        else:
+            signed_pdf = signer.sign_pdf(
+                input_pdf, output_pdf, visible_stamp=visible_stamp,
+                use_timestamp=use_timestamp, use_b_lta=use_b_lta, tsa_url=tsa_url
+            )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
         return 1
-    except Exception:
-        print("PDF-Signierung fehlgeschlagen", file=sys.stderr)
+    except Exception as exc:
+        # B-LTA-/pyHanko-Fehler für die Diagnose sichtbar machen, ohne
+        # PIN-/CAN-Werte oder Zertifikatsinhalte auszugeben.
+        detail = str(exc).strip() or "Keine weitere Fehlerbeschreibung verfügbar"
+        print(
+            f"PDF-Signierung fehlgeschlagen ({type(exc).__name__}): {detail[:300]}",
+            file=sys.stderr,
+        )
         return 1
 
     print(signed_pdf.name)

@@ -858,3 +858,18 @@
     .zip-entry-actions { gap:4px; padding:0 2px; }
     .zip-entry-download, .zip-entry-select { width:32px; height:36px; }
 }
+
+
+/* Einheitliche Checkbox- und Textausrichtung im Signaturbereich. */
+.tool-content .sign-option {
+    display: grid !important;
+    grid-template-columns: 16px max-content;
+    align-items: center;
+    column-gap: 0;
+    margin: 0 0 9px !important;
+}
+.tool-content .sign-option input[type="checkbox"] {
+    width: 13px;
+    min-width: 13px;
+    margin: 0 !important;
+}
