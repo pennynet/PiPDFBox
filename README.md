@@ -15,7 +15,7 @@ PiPDFBox ist eine selbst gehostete Webanwendung zur Verarbeitung von PDF-Dateien
 | Komprimieren | PDF-Dateigröße mit wählbarem Profil reduzieren |
 | Archivieren | PDF/A-1b, PDF/A-2b oder PDF/A-3b erzeugen |
 | Texterkennung | Scans mit OCR durchsuchbar machen (Deutsch, Englisch oder beide) |
-| PDF signieren | PDF mit einer D-TRUST-Signaturkarte über OpenSC und pyHanko signieren; optional mit sichtbarem Stempel und konfigurierbarem RFC-3161-Zeitserver (BalTstamp voreingestellt) |
+| PDF signieren | PAdES B-LTA-Signatur direkt im PDF oder separate CAdES-Signaturdatei (.p7s) mit D-TRUST-Signaturkarte; optional sichtbare Annotation bei PAdES; RFC-3161-Zeitstempel über konfigurierbaren Zeitserver |
 
 Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signaturkarte. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben.
 
