@@ -64,6 +64,7 @@ def main():
     if len(sys.argv) < 4: raise ValueError('Ungültige Worker-Parameter')
     op, outdir, *raw_inputs = sys.argv[1:]
     reverse_second = '--reverse-second' in raw_inputs
+    number_interleave = '--number-interleave' in raw_inputs
     reverse_inputs = '--reverse-inputs' in raw_inputs
     parallel_gs = '--parallel-gs' in raw_inputs
     profile_args = [p for p in raw_inputs if p.startswith('--profile=')]
@@ -74,7 +75,7 @@ def main():
     language = language_args[0].split('=', 1)[1] if language_args else 'deu'
     inputs = [
         p for p in raw_inputs
-        if p != '--reverse-second' and p != '--reverse-inputs' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
+        if p != '--reverse-second' and p != '--number-interleave' and p != '--reverse-inputs' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
     ]
     outdir = Path(outdir).resolve()
     for p in inputs:
@@ -118,6 +119,20 @@ def main():
         for i in range(max(len(a.pages),len(second_pages))):
             if i<len(a.pages): w.add_page(a.pages[i])
             if i<len(second_pages): w.add_page(second_pages[i])
+
+        if number_interleave:
+            total = len(w.pages)
+            for index in range(total):
+                page = w.pages[index]
+                if page.rotation:
+                    page.transfer_rotation_to_content()
+                overlay = make_number_overlay(
+                    float(page.mediabox.width),
+                    float(page.mediabox.height),
+                    f'- {index + 1} -'
+                )
+                page.merge_page(overlay)
+
         name='vorder-rueckseiten.pdf'
         with open(outdir/name,'wb') as f: w.write(f)
     elif op == 'number':
