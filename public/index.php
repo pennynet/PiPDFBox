@@ -416,9 +416,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             if ($signProfile === 'pades' && ($_POST['visible_stamp'] ?? '') === '1') {
                                 $args[] = '--visible-stamp';
                             }
-                            // PAdES B-LTA requires a document timestamp; CAdES uses one as well.
-                            $args[] = '--timestamp';
-                            $args[] = '--tsa-url=' . $selectedTsaUrl;
+                            $usePadesBltA = $signProfile === 'pades' && ($_POST['b_lta'] ?? '') === '1';
+                            if ($signProfile === 'cades') {
+                                // CAdES continues to use an RFC-3161 timestamp.
+                                $args[] = '--timestamp';
+                                $args[] = '--tsa-url=' . $selectedTsaUrl;
+                            } elseif ($usePadesBltA) {
+                                $args[] = '--b-lta';
+                                $args[] = '--tsa-url=' . $selectedTsaUrl;
+                            }
                         }
 
                         if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
@@ -551,7 +557,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $notice = $op === 'sign'
                                     ? ($signProfile === 'cades'
                                         ? 'CAdES-Signaturdatei wurde erfolgreich erstellt.'
-                                        : 'PDF wurde erfolgreich mit PAdES B-LTA signiert.')
+                                        : ($usePadesBltA
+                                        ? 'PDF wurde erfolgreich mit PAdES B-LTA signiert.'
+                                        : 'PDF wurde erfolgreich mit PAdES signiert.'))
                                     : 'Verarbeitung abgeschlossen.';
                             } elseif (!$error) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
@@ -794,9 +802,13 @@ $result = $_SESSION['result'] ?? null;
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
                         Sichtbarer Stempel
                     </label>
-                    <label class="option-check">
+                    <label class="option-check" style="display:inline-flex; align-items:center; margin-right:12px;">
                         <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
-                        PAdES (B-LTA)
+                        PAdES
+                    </label>
+                    <label class="option-check" style="display:inline-flex; align-items:center;">
+                        <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
+                        B-LTA
                     </label>
                     <label class="option-check">
                         <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
@@ -961,7 +973,8 @@ $result = $_SESSION['result'] ?? null;
     const cades = document.getElementById("sign_profile_cades");
     const profile = document.getElementById("sign_profile");
     const annotation = document.getElementById("visible_stamp");
-    if (!pades || !cades || !profile || !annotation) return;
+    const bLta = document.getElementById("sign_b_lta");
+    if (!pades || !cades || !profile || !annotation || !bLta) return;
     const sync = (changed) => {
         if (changed === cades && cades.checked) pades.checked = false;
         if (changed === pades && pades.checked) cades.checked = false;
@@ -971,6 +984,8 @@ $result = $_SESSION['result'] ?? null;
         profile.value = cades.checked ? "cades" : "pades";
         annotation.disabled = cades.checked;
         if (cades.checked) annotation.checked = false;
+        bLta.disabled = cades.checked;
+        if (cades.checked) bLta.checked = false;
     };
     pades.addEventListener("change", () => sync(pades));
     cades.addEventListener("change", () => sync(cades));
