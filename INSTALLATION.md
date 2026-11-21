@@ -23,7 +23,7 @@ Das Repository ist öffentlich. Für den Download und die Installation ist keine
 
 Im Menü **1) Neuinstallation / Einrichtung** wählen und den Anweisungen folgen. Der Installer fragt den gewünschten Port und ein Zugangspasswort ab.
 
-Für die Signierung müssen der kompatible Kartenleser und die D-TRUST-Signaturkarte angeschlossen sein. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben; PiPDFBox fragt keine PIN im Browser ab. Bei der Signierung kann zwischen PAdES B-LTA (PDF mit eingebetteter Signatur und Langzeitvalidierungsdaten) und CAdES (separate, abgetrennte .p7s-Datei) gewählt werden. Beide Profile verwenden den konfigurierten RFC-3161-Zeitstempelserver. Die sichtbare Annotation ist nur bei PAdES verfügbar.
+Für die Signierung müssen der kompatible Kartenleser und die D-TRUST-Signaturkarte angeschlossen sein. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben; PiPDFBox fragt keine PIN im Browser ab. Bei der Signierung kann zwischen normalem PAdES (PDF mit eingebetteter Signatur), optionalem PAdES B-LTA (zusätzlich mit eingebetteten Langzeitvalidierungsdaten und Dokumentzeitstempel) und CAdES (separate, abgetrennte .p7s-Datei) gewählt werden. B-LTA ist standardmäßig nicht aktiviert. PAdES B-LTA und CAdES verwenden den konfigurierten RFC-3161-Zeitstempelserver; normales PAdES benötigt keinen Zeitstempelserver. Der sichtbare Stempel ist nur bei PAdES verfügbar.
 
 Anschließend im Browser öffnen:
 
