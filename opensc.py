@@ -36,7 +36,9 @@ from pyhanko.pdf_utils.layout import (
 )
 from pyhanko.pdf_utils.writer import PageObject
 from pyhanko.sign import signers
+from pyhanko.sign.fields import SigSeedSubFilter
 from pyhanko.sign.timestamps import HTTPTimeStamper
+from pyhanko_certvalidator import ValidationContext
 from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
 from pyhanko.stamp.appearances import CoordinateSystem
 
@@ -58,7 +60,7 @@ class _OpenSCExternalSigner(signers.ExternalSigner):
         certificate: asn1_x509.Certificate,
         signature_size: int,
     ) -> None:
-        super().__init__(signing_cert=certificate, cert_registry=None)
+        super().__init__(signing_cert=certificate, cert_registry=None, embed_roots=True)
         self._signature_size = signature_size
 
     async def async_sign_raw(
@@ -392,7 +394,7 @@ class OpenSCPdfSigner:
 
     def sign_pdf(
         self, input_pdf: Path, output_pdf: Path, visible_stamp: bool = False,
-        use_timestamp: bool = True,
+        use_timestamp: bool = False, use_b_lta: bool = False,
         tsa_url: str = "http://tsa2.baltstamp.lt",
     ) -> Path:
         if not input_pdf.is_file():
@@ -406,10 +408,15 @@ class OpenSCPdfSigner:
         if output_pdf.exists():
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
 
+        validation_context = ValidationContext(allow_fetching=True) if use_b_lta else None
         metadata = signers.PdfSignatureMetadata(
             field_name="Signature1",
             md_algorithm="sha256",
             reason="Signiert mit D-TRUST",
+            subfilter=SigSeedSubFilter.PADES,
+            validation_context=validation_context,
+            embed_validation_info=use_b_lta,
+            use_pades_lta=use_b_lta,
         )
         external_signer = _OpenSCExternalSigner(
             self._certificate,
@@ -430,9 +437,10 @@ class OpenSCPdfSigner:
 
                 # Das Signaturfeld bleibt unsichtbar. Der optionale Stempel wurde
                 # zuvor als normaler Seiteninhalt eingebettet und wird mit signiert.
-                # Der RFC-3161-Zeitstempel ist unabhängig vom sichtbaren
-                # Stempel und kann separat aktiviert oder deaktiviert werden.
-                timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
+                # B-LTA bettet Validierungsdaten in das DSS ein und hängt einen
+                # zusätzlichen Dokumentzeitstempel an. Normales PAdES bleibt ohne
+                # DSS-Erweiterung und ohne Zeitstempel.
+                timestamper = HTTPTimeStamper(tsa_url) if (use_timestamp or use_b_lta) else None
                 pdf_signer = signers.PdfSigner(
                     metadata,
                     external_signer,
@@ -454,10 +462,59 @@ class OpenSCPdfSigner:
         return output_pdf
 
 
+    def sign_cades(
+        self, input_pdf: Path, output_signature: Path,
+        use_timestamp: bool = True,
+        tsa_url: str = "http://tsa2.baltstamp.lt",
+    ) -> Path:
+        """Create a detached CAdES CMS signature for the exact PDF byte stream."""
+        if not input_pdf.is_file():
+            raise FileNotFoundError("Eingabe-PDF wurde nicht gefunden")
+        if input_pdf.resolve() == output_signature.resolve():
+            raise ValueError("Eingabe und Signaturdatei müssen verschieden sein")
+        if input_pdf.resolve().parent != output_signature.resolve().parent:
+            raise ValueError("Eingabe und Signaturdatei müssen im selben Auftragsordner liegen")
+        if output_signature.name != "signiert.pdf.p7s":
+            raise ValueError("Ungültiger Name der CAdES-Ausgabedatei")
+        if output_signature.exists():
+            raise FileExistsError("Die CAdES-Signaturdatei existiert bereits")
+
+        external_signer = _OpenSCExternalSigner(
+            self._certificate,
+            self._signature_size,
+        )
+        timestamper = HTTPTimeStamper(tsa_url) if use_timestamp else None
+        created_output = False
+        try:
+            with input_pdf.open("rb") as source:
+                cms_signature = asyncio.run(
+                    external_signer.async_sign_general_data(
+                        input_data=source,
+                        digest_algorithm="sha256",
+                        detached=True,
+                        use_cades=True,
+                        timestamper=timestamper,
+                    )
+                )
+            with output_signature.open("xb") as destination:
+                created_output = True
+                destination.write(cms_signature.dump())
+        except Exception as exc:
+            if created_output:
+                try:
+                    output_signature.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            if isinstance(exc, OpenSCPdfSigningError):
+                raise
+            raise OpenSCPdfSigningError("CAdES-Signierung fehlgeschlagen") from exc
+        return output_signature
+
+
 def main() -> int:
     if len(sys.argv) < 3:
         print(
-            "Aufruf: opensc.py EINGABE.pdf AUSGABE.pdf [--visible-stamp] [--timestamp] [--tsa-url=URL]",
+            "Aufruf: opensc.py EINGABE.pdf AUSGABE [--profile=pades|cades] [--visible-stamp] [--b-lta] [--timestamp] [--tsa-url=URL]",
             file=sys.stderr,
         )
         return 2
@@ -467,12 +524,15 @@ def main() -> int:
     options = sys.argv[3:]
     visible_stamp = "--visible-stamp" in options
     use_timestamp = "--timestamp" in options
+    use_b_lta = "--b-lta" in options
+    profile_options = [arg[len("--profile="):] for arg in options if arg.startswith("--profile=")]
+    profile = profile_options[0] if profile_options else "pades"
     tsa_options = [arg[len("--tsa-url="):] for arg in options if arg.startswith("--tsa-url=")]
     unknown_options = [
         arg for arg in options
-        if arg not in ("--visible-stamp", "--timestamp") and not arg.startswith("--tsa-url=")
+        if arg not in ("--visible-stamp", "--timestamp", "--b-lta") and not arg.startswith("--tsa-url=") and not arg.startswith("--profile=")
     ]
-    if unknown_options or len(tsa_options) > 1:
+    if unknown_options or len(tsa_options) > 1 or len(profile_options) > 1 or profile not in ("pades", "cades"):
         print("Ungültige Signieroption.", file=sys.stderr)
         return 2
     tsa_url = tsa_options[0] if tsa_options else "http://tsa2.baltstamp.lt"
@@ -486,8 +546,14 @@ def main() -> int:
     ):
         print("Ungültige Zeitserver-URL.", file=sys.stderr)
         return 2
-    if not use_timestamp and tsa_options:
-        print("Eine Zeitserver-URL kann nur mit --timestamp angegeben werden.", file=sys.stderr)
+    if profile == "cades" and visible_stamp:
+        print("Ein sichtbarer Stempel ist bei einer abgetrennten CAdES-Signatur nicht möglich.", file=sys.stderr)
+        return 2
+    if profile == "cades" and use_b_lta:
+        print("B-LTA ist nur für PAdES verfügbar.", file=sys.stderr)
+        return 2
+    if not (use_timestamp or use_b_lta) and tsa_options:
+        print("Eine Zeitserver-URL kann nur mit --timestamp oder --b-lta angegeben werden.", file=sys.stderr)
         return 2
 
     try:
@@ -497,10 +563,15 @@ def main() -> int:
             raise FileExistsError("Die signierte Ausgabedatei existiert bereits")
         certificate_der = read_signing_certificate()
         signer = OpenSCPdfSigner(certificate_der)
-        signed_pdf = signer.sign_pdf(
-            input_pdf, output_pdf, visible_stamp=visible_stamp,
-            use_timestamp=use_timestamp, tsa_url=tsa_url
-        )
+        if profile == "cades":
+            signed_pdf = signer.sign_cades(
+                input_pdf, output_pdf, use_timestamp=use_timestamp, tsa_url=tsa_url
+            )
+        else:
+            signed_pdf = signer.sign_pdf(
+                input_pdf, output_pdf, visible_stamp=visible_stamp,
+                use_timestamp=use_timestamp, use_b_lta=use_b_lta, tsa_url=tsa_url
+            )
     except (OpenSCPdfSigningError, FileNotFoundError, FileExistsError, ValueError) as exc:
         print(str(exc)[:300] or "PDF-Signierung fehlgeschlagen", file=sys.stderr)
         return 1

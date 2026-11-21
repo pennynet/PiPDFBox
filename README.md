@@ -10,12 +10,12 @@ PiPDFBox ist eine selbst gehostete Webanwendung zur Verarbeitung von PDF-Dateien
 |---|---|
 | Zusammenführen | Mehrere PDFs zu einer PDF verbinden |
 | Aufteilen | Eine PDF in einzelne Seiten zerlegen und als ZIP bereitstellen |
-| Verschachteln | Zwei PDFs abwechselnd kombinieren, z. B. Vorder- und Rückseiten |
+| Verschachteln | Zwei PDFs abwechselnd kombinieren, z. B. Vorder- und Rückseiten; optional fortlaufend oben zentriert paginieren (`- 1 -`, `- 2 -`, …) |
 | Nummerieren | Seitennummern mit optionalem Vorspann hinzufügen |
 | Komprimieren | PDF-Dateigröße mit wählbarem Profil reduzieren |
 | Archivieren | PDF/A-1b, PDF/A-2b oder PDF/A-3b erzeugen |
 | Texterkennung | Scans mit OCR durchsuchbar machen (Deutsch, Englisch oder beide) |
-| PDF signieren | PDF mit einer D-TRUST-Signaturkarte über OpenSC und pyHanko signieren; optional mit sichtbarem Stempel und konfigurierbarem RFC-3161-Zeitserver (BalTstamp voreingestellt) |
+| PDF signieren | PAdES-Signatur direkt im PDF (optional mit B-LTA-Langzeitvalidierung) oder separate CAdES-Signaturdatei (.p7s) mit D-TRUST-Signaturkarte; optional sichtbarer Stempel bei PAdES; RFC-3161-Zeitstempel bei B-LTA und CAdES |
 
 Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signaturkarte. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben.
 
