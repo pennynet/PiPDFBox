@@ -473,6 +473,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         if ($op === 'interleave' && isset($_POST['reverse_second']) && $_POST['reverse_second'] === '1') {
                             $args[] = '--reverse-second';
                         }
+                        if ($op === 'interleave' && ($_POST['number_interleave'] ?? '') === '1') {
+                            $args[] = '--number-interleave';
+                        }
 
                         $workerOutput = '';
                         $rc = 1;
@@ -786,6 +789,10 @@ $result = $_SESSION['result'] ?? null;
                     <label class="option-check">
                         <input type="checkbox" name="reverse_second" value="1">
                         Rückseiten-PDF umkehren
+                    </label>
+                    <label class="option-check">
+                        <input type="checkbox" name="number_interleave" value="1">
+                        Gleich nummerieren
                     </label>
                     <button class="task-button" type="submit" name="action" value="interleave">
                         PDFs verschachteln
