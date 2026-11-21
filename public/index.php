@@ -802,14 +802,16 @@ $result = $_SESSION['result'] ?? null;
                         <input type="checkbox" name="visible_stamp" value="1" id="visible_stamp">
                         Sichtbarer Stempel
                     </label>
-                    <label class="option-check" style="display:inline-flex; align-items:center; margin-right:12px;">
-                        <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
-                        PAdES
-                    </label>
-                    <label class="option-check" style="display:inline-flex; align-items:center;">
-                        <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
-                        B-LTA
-                    </label>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <label class="option-check" style="display:inline-flex; align-items:center; margin:0;">
+                            <input type="checkbox" name="sign_profile_pades" value="1" id="sign_profile_pades" checked>
+                            PAdES
+                        </label>
+                        <label class="option-check" style="display:inline-flex; align-items:center; margin:0;">
+                            <input type="checkbox" name="b_lta" value="1" id="sign_b_lta">
+                            B-LTA
+                        </label>
+                    </div>
                     <label class="option-check">
                         <input type="checkbox" name="sign_profile_cades" value="1" id="sign_profile_cades">
                         CAdES (separate .p7s-Datei)
