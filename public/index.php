@@ -549,7 +549,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 ];
 
                                 $notice = $op === 'sign'
-                                    ? 'PDF wurde erfolgreich signiert.'
+                                    ? ($signProfile === 'cades'
+                                        ? 'CAdES-Signaturdatei wurde erfolgreich erstellt.'
+                                        : 'PDF wurde erfolgreich mit PAdES B-LTA signiert.')
                                     : 'Verarbeitung abgeschlossen.';
                             } elseif (!$error) {
                                 $error = 'Die Verarbeitung lieferte keine Ausgabedatei.';
