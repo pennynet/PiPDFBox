@@ -559,7 +559,7 @@ install_app() {
         rm -rf -- "$DATA_DIR"
     fi
 
-    install -d -o www-data -g www-data -m 700 "$DATA_DIR" "$DATA_DIR/jobs"
+    install -d -o www-data -g www-data -m 700 "$DATA_DIR" "$DATA_DIR/jobs" "$DATA_DIR/certificates"
     install_cleanup_timer
     install -d -o root -g www-data -m 750 "$CONFIG_DIR"
 
@@ -734,6 +734,7 @@ update_app() {
     systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
     check_app || return 1
     install_signing_dependencies || return 1
+    install -d -o www-data -g www-data -m 700 "$DATA_DIR/certificates"
     install_sealium_key_support || return 1
     install_launcher
     install_cleanup_timer
