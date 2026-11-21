@@ -10,7 +10,7 @@ PiPDFBox ist eine selbst gehostete Webanwendung zur Verarbeitung von PDF-Dateien
 |---|---|
 | Zusammenführen | Mehrere PDFs zu einer PDF verbinden |
 | Aufteilen | Eine PDF in einzelne Seiten zerlegen und als ZIP bereitstellen |
-| Verschachteln | Zwei PDFs abwechselnd kombinieren, z. B. Vorder- und Rückseiten; optional fortlaufend oben zentriert nummerieren (`- 1 -`, `- 2 -`, …) |
+| Verschachteln | Zwei PDFs abwechselnd kombinieren, z. B. Vorder- und Rückseiten; optional fortlaufend oben zentriert paginieren (`- 1 -`, `- 2 -`, …) |
 | Nummerieren | Seitennummern mit optionalem Vorspann hinzufügen |
 | Komprimieren | PDF-Dateigröße mit wählbarem Profil reduzieren |
 | Archivieren | PDF/A-1b, PDF/A-2b oder PDF/A-3b erzeugen |
