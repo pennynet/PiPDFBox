@@ -7,7 +7,7 @@ declare(strict_types=1);
  */
 function createCadesZipArchive(string $jobDir, string $pdfPath, string $signaturePath, string $stem): bool {
     if (!class_exists(ZipArchive::class) || $stem === '' || $stem === '.' || $stem === '..'
-        || preg_match('/[\\\\\/\\x00]/', $stem)) {
+        || str_contains($stem, '/') || str_contains($stem, '\\') || str_contains($stem, chr(0))) {
         return false;
     }
 
