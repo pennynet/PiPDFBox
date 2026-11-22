@@ -557,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                     $error = 'Die erzeugte CAdES-Signaturdatei hat einen unerwarteten Dateinamen.';
                                 }
 
-                                if (!$error && ($archiveStem === '' || $archiveStem === '.' || $archiveStem === '..' || preg_match('/[\\\\\/\\x00]/', $archiveStem))) {
+                                if (!$error && ($archiveStem === '' || $archiveStem === '.' || $archiveStem === '..' || str_contains($archiveStem, '/') || str_contains($archiveStem, '\\') || str_contains($archiveStem, chr(0)))) {
                                     $error = 'Der Dateiname für das CAdES-ZIP-Archiv ist ungültig.';
                                 }
 
