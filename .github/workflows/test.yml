@@ -16,12 +16,13 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y php-cli php-mbstring ghostscript qpdf
+          sudo apt-get install -y php-cli php-mbstring php-zip ghostscript qpdf
           python -m pip install --upgrade pip
           python -m pip install pypdf
       - name: Check PHP syntax
         run: |
           php -l public/index.php
+          php -l public/cades-zip.php
           php -l public/download.php
       - name: Compile Python worker
         run: python -m py_compile worker.py
