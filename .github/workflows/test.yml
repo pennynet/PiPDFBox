@@ -24,6 +24,8 @@ jobs:
           php -l public/index.php
           php -l public/cades-zip.php
           php -l public/download.php
+          php -l public/zip-content.php
+          php -l public/delete-result.php
       - name: Compile Python worker
         run: python -m py_compile worker.py
       - name: Run isolated web smoke test
