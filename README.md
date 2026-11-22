@@ -109,6 +109,8 @@ Lokaler Web-Smoke-Test (benötigt PHP CLI, Python 3, curl und das Python-Modul p
 bash tests/web-smoke.sh
 ```
 
+Der Web-Smoke-Test führt auch den isolierten CAdES-ZIP-Test mit synthetischen Dateien aus. Dieser prüft ZIP-Inhalt, Dateiintegrität und den unveränderten PDF-Hash; eine echte Karten-Signierung ist darin nicht enthalten.
+
 Worker-Benchmarks mit eigenen, nicht vertraulichen Test-PDFs:
 
 ```bash
