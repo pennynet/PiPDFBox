@@ -27,19 +27,19 @@ try {
     file_put_contents($signaturePath, $signatureBytes);
     $pdfHashBefore = hash_file('sha256', $pdfPath);
 
-    check(createCadesZipArchive($jobDir, $pdfPath, $signaturePath, 'Beispiel-signiert'), 'ZIP-Erstellung fehlgeschlagen.');
+    check(createCadesZipArchive($jobDir, $pdfPath, $signaturePath, 'Überblick-signiert'), 'ZIP-Erstellung fehlgeschlagen.');
 
-    $archivePath = $jobDir . '/Beispiel-signiert.zip';
+    $archivePath = $jobDir . '/Überblick-signiert.zip';
     check(is_file($archivePath), 'ZIP-Datei fehlt.');
     $zip = new ZipArchive();
     check($zip->open($archivePath, ZipArchive::RDONLY) === true, 'ZIP-Datei ist nicht lesbar.');
     check($zip->numFiles === 2, 'ZIP enthält nicht genau zwei Dateien.');
-    check($zip->getFromName('Beispiel-signiert.pdf') === $pdfBytes, 'PDF-Inhalt im ZIP weicht vom Original ab.');
-    check($zip->getFromName('Beispiel-signiert.p7s') === $signatureBytes, 'Signaturinhalt im ZIP weicht vom Original ab.');
+    check($zip->getFromName('Überblick-signiert.pdf') === $pdfBytes, 'PDF-Inhalt im ZIP weicht vom Original ab.');
+    check($zip->getFromName('Überblick-signiert.p7s') === $signatureBytes, 'Signaturinhalt im ZIP weicht vom Original ab.');
     $zip->close();
 
     check(hash_file('sha256', $pdfPath) === $pdfHashBefore, 'Original-PDF wurde verändert.');
-    check(!createCadesZipArchive($jobDir, $pdfPath, $signaturePath, 'Beispiel-signiert'), 'Vorhandenes ZIP wurde unerwartet überschrieben.');
+    check(!createCadesZipArchive($jobDir, $pdfPath, $signaturePath, 'Überblick-signiert'), 'Vorhandenes ZIP wurde unerwartet überschrieben.');
     echo "CAdES-ZIP-Smoke-Test erfolgreich.\n";
 } finally {
     foreach (glob($jobDir . '/*') ?: [] as $path) {
