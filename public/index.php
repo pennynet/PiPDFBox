@@ -583,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                                 $notice = $op === 'sign'
                                     ? ($signProfile === 'cades'
-                                        ? 'CAdES-Signaturdatei wurde erfolgreich erstellt.'
+                                        ? 'CAdES-Signierung erfolgreich. Original-PDF und Signatur stehen gemeinsam als ZIP bereit.'
                                         : ($usePadesBltA
                                         ? 'PDF wurde erfolgreich mit PAdES B-LTA signiert.'
                                         : 'PDF wurde erfolgreich mit PAdES signiert.'))
