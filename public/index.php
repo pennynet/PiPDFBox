@@ -996,7 +996,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=46"></script>
+<script src="/assets/app.js?v=47"></script>
 <script>
 (() => {
     const pades = document.getElementById("sign_profile_pades");
