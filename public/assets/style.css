@@ -920,5 +920,5 @@
     min-height: 4.2em;
 }
 .tool-ocr .tool-content .option-check {
-    margin-bottom: 6px !important;
+    margin-bottom: 0 !important;
 }
