@@ -20,6 +20,9 @@ PHP_FPM_SERVICE="php8.4-fpm"
 PHP_INI_FILE="/etc/php/8.4/fpm/conf.d/99-pipdfbox.ini"
 GITHUB_ARCHIVE="https://codeload.github.com/pennynet/PiPDFBox/tar.gz/refs/heads/main"
 OPENSC_VERSION="0.27.1"
+# PiPDFBox verwendet ausschließlich diesen projekt-eigenen OpenSC-Prefix.
+# Debian-Pakete unter /usr werden bewusst weder gepinnt noch deaktiviert;
+# apt upgrade darf Systemupdates weiterhin normal einspielen.
 OPENSC_PREFIX="/opt/opensc-${OPENSC_VERSION}"
 OPENSC_SHA256="976f4a23eaf3397a1a2c3a7aac80bf971a8c3d829c9a79f06145bfaeeae5eca7"
 PYTHON_LIB_DIR="$APP_DIR/python"
@@ -282,7 +285,22 @@ install_opensc() {
         rm -rf "$temp_dir"
     fi
 
-    printf '%s\n' "$OPENSC_PREFIX/lib" > /etc/ld.so.conf.d/opensc-0.27.1.conf
+    # Den projektspezifischen Build dokumentieren. Das ist eine lokale
+    # Installationsnotiz, keine apt-Paketdatei und keine Paket-Pinning-Regel.
+    install -d -m 755 "$OPENSC_PREFIX/share/pipdfbox"
+    cat > "$OPENSC_PREFIX/share/pipdfbox/opensc-build-info.txt" <<EOF
+PiPDFBox OpenSC build
+Version: $OPENSC_VERSION
+Prefix: $OPENSC_PREFIX
+Source: https://github.com/OpenSC/OpenSC/releases/download/$OPENSC_VERSION/opensc-$OPENSC_VERSION.tar.gz
+SHA-256: $OPENSC_SHA256
+PKCS#11 module: $PKCS11_MODULE
+PKCS#11 tool: $PKCS11_TOOL
+EOF
+
+    # Nur die Bibliothek aus dem festen Prefix beim dynamischen Linker anmelden.
+    # Debian-OpenSC unter /usr bleibt davon unabhängig.
+    printf '%s\n' "$OPENSC_PREFIX/lib" > "/etc/ld.so.conf.d/opensc-${OPENSC_VERSION}.conf"
     ldconfig
     [[ -x "$OPENSC_PREFIX/bin/pkcs11-tool" && -f "$OPENSC_PREFIX/lib/opensc-pkcs11.so" ]] || {
         error "OpenSC-Werkzeuge oder PKCS#11-Modul fehlen nach der Installation."

@@ -46,6 +46,10 @@ from pyhanko.sign.signers.constants import DEFAULT_SIGNING_STAMP_STYLE
 from pyhanko.stamp.appearances import CoordinateSystem
 
 
+# Absichtlich absoluter, projekt-eigener Prefix: PiPDFBox verwendet nicht
+# das gegebenenfalls parallel installierte Debian-OpenSC unter /usr.
+# apt upgrade verändert diesen Prefix nicht; ein Wechsel erfolgt kontrolliert
+# durch eine Änderung dieser Pfade zusammen mit Installer und Tests.
 OPENSC_PREFIX = Path("/opt/opensc-0.27.1")
 PKCS11_MODULE = OPENSC_PREFIX / "lib/opensc-pkcs11.so"
 PKCS11_TOOL = OPENSC_PREFIX / "bin/pkcs11-tool"

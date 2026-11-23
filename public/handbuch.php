@@ -317,6 +317,10 @@ $pages = [
         '- /opt/pipdfbox: Anwendungscode.',
         '- /opt/pipdfbox/python: pyHanko und Python-Abhängigkeiten der Signierung.',
         '- /opt/opensc-0.27.1: eigens gebautes OpenSC samt PKCS#11-Modul.',
+        '  PiPDFBox ruft pkcs11-tool und opensc-pkcs11.so ausschließlich aus diesem',
+        '  Prefix auf; ein Debian-OpenSC unter /usr wird nicht als PKCS#11-Modul genutzt.',
+        '  apt upgrade bleibt aktiv und aktualisiert Debian-Systempakete unabhängig davon.',
+        '  Version, Quellarchiv und SHA-256 stehen in share/pipdfbox/opensc-build-info.txt.';
         '- /etc/pipdfbox: Zugangskonfiguration und Webserver-Port.',
         '- /var/lib/pipdfbox/jobs: Uploads, Ergebnisse und temporäre Auftragsdaten.',
         '- /var/lib/pipdfbox/certificates: zwischengespeicherte öffentliche CA-Zertifikate.',
