@@ -783,7 +783,7 @@ uninstall_app() {
     echo
     info "PiPDFBox – Deinstallation"
     echo "1) Nur Anwendung entfernen (Einstellungen und PDF-Aufträge behalten)"
-    echo "2) Alles entfernen (einschließlich Einstellungen und PDF-Aufträge)"
+    echo "2) Vollständig entfernen (alle PiPDFBox-Dateien und Einstellungen löschen)"
     echo "0) Abbrechen"
     read -r -p "Auswahl: " choice
     case "$choice" in
@@ -792,51 +792,84 @@ uninstall_app() {
             [[ "$answer" == "ja" ]] || { info "Abgebrochen."; return 0; }
             ;;
         2)
-            read -r -p "Alle Einstellungen und PDF-Aufträge unwiderruflich löschen? (ALLES): " answer
+            echo
+            echo "Gelöscht werden Anwendung, Konfiguration, Sealium-Schlüssel,"
+            echo "TSA-Einstellungen, D-TRUST-/BaltStamp-Zertifikate, PDF-Aufträge"
+            echo "und der PiPDFBox-eigene OpenSC-Build."
+            echo "Gemeinsam genutzte Systempakete und Dienste bleiben erhalten."
+            read -r -p "Vollständige Deinstallation bestätigen (ALLES): " answer
             [[ "$answer" == "ALLES" ]] || { info "Abgebrochen."; return 0; }
             ;;
         0) info "Abgebrochen."; return 0 ;;
         *) error "Ungültige Auswahl."; return 1 ;;
     esac
 
-    # Nginx-Konfiguration vor Änderungen prüfen.
     if command -v nginx >/dev/null 2>&1; then
         nginx -t || { error "Nginx-Test fehlgeschlagen. Abbruch."; return 1; }
     fi
 
-    # Bereinigungsdienst vor dem Entfernen des Anwendungscodes stoppen.
     systemctl disable --now pipdfbox-cleanup.timer 2>/dev/null || true
     systemctl stop pipdfbox-cleanup.service 2>/dev/null || true
-    rm -f /etc/systemd/system/pipdfbox-cleanup.timer /etc/systemd/system/pipdfbox-cleanup.service
+    rm -f /etc/systemd/system/pipdfbox-cleanup.timer
+    rm -f /etc/systemd/system/pipdfbox-cleanup.service
     systemctl daemon-reload
     systemctl reset-failed pipdfbox-cleanup.service 2>/dev/null || true
 
+    # Ausschließlich die von PiPDFBox angelegte Nginx-Site und deren
+    # zeitgestempelte Sicherungs-/Rollback-Dateien entfernen.
     rm -f "$NGINX_ENABLED" "$NGINX_SITE"
-    if command -v nginx >/dev/null 2>&1; then
-        systemctl reload nginx
+    if [[ -d /etc/nginx/sites-available ]]; then
+        find /etc/nginx/sites-available -maxdepth 1 -type f \
+            \( -name 'pipdfbox.backup.*' -o -name 'pipdfbox.rollback.*' -o -name 'pipdfbox.tmp.*' \) \
+            -delete
     fi
-    rm -f /usr/local/bin/pipdfbox
+    if command -v nginx >/dev/null 2>&1; then
+        systemctl reload nginx || {
+            error "Nginx konnte nach Entfernen der PiPDFBox-Site nicht neu geladen werden."
+            return 1
+        }
+    fi
 
-    # PiPDFBox-spezifische PHP-FPM-Einstellungen gehören zur Anwendung
-    # und werden bei jeder Deinstallation entfernt.
+    rm -f /usr/local/bin/pipdfbox
+    rm -f /usr/local/sbin/pipdfbox-set-sealium-key
+    rm -f /etc/sudoers.d/pipdfbox-sealium
+    rm -f "$POLKIT_RULE"
+
     if [[ -f "$PHP_INI_FILE" ]]; then
         rm -f "$PHP_INI_FILE"
         if systemctl is-active --quiet "$PHP_FPM_SERVICE"; then
-            systemctl restart "$PHP_FPM_SERVICE"
+            systemctl restart "$PHP_FPM_SERVICE" || {
+                error "PHP-FPM konnte nach Entfernen der PiPDFBox-Konfiguration nicht neu gestartet werden."
+                return 1
+            }
         fi
     fi
 
-    rm -rf "$APP_DIR"
+    # Nur temporäre Dateien mit eindeutigem PiPDFBox-Präfix entfernen.
+    find /tmp -mindepth 1 -maxdepth 1 \
+        \( -name 'pipdfbox-github.*' -o -name 'pipdfbox-opensc.*' \
+        -o -name 'pipdfbox-opensc-*' -o -name 'pipdfbox-cert-*' \
+        -o -name 'pipdfbox-sealium-*' -o -name 'pipdfbox-worker-*' \) \
+        -exec rm -rf -- {} +
+
+    rm -rf -- "$APP_DIR"
 
     if [[ "$choice" == "2" ]]; then
-        rm -rf "$CONFIG_DIR" "$DATA_DIR"
-        rm -rf "$OPENSC_PREFIX" "/etc/opensc-$OPENSC_VERSION"
-        rm -f /etc/ld.so.conf.d/opensc-0.27.1.conf
+        # Zugangsdaten, API-Schlüssel, TSA-/Dateinamen-Konfiguration,
+        # CA-Zertifikate, Aufträge und Worker-Lock.
+        rm -rf -- "$CONFIG_DIR" "$DATA_DIR"
+
+        # Ausschließlich der eigene OpenSC-Build, nicht Debian-OpenSC.
+        rm -rf -- "$OPENSC_PREFIX" "/etc/opensc-$OPENSC_VERSION"
+        rm -f -- "/etc/ld.so.conf.d/opensc-${OPENSC_VERSION}.conf"
         ldconfig
-        info "PiPDFBox einschließlich Konfiguration, PDF-Aufträgen und eigenem OpenSC-Build entfernt."
+
+        info "PiPDFBox vollständig entfernt: Programm, Konfiguration, Schlüssel, Zertifikate, Aufträge und eigener OpenSC-Build."
     else
-        info "Anwendung entfernt. Konfiguration und PDF-Aufträge bleiben erhalten."
+        info "Anwendung und Systemintegration entfernt. Konfiguration, Schlüssel, Zertifikate und PDF-Aufträge bleiben erhalten."
     fi
+
+    info "Gemeinsam genutzte Systempakete und Dienste (Nginx, PHP, Python, PC/SC, Debian-OpenSC, LibreOffice) bleiben installiert."
 }
 
 main() {
