@@ -656,7 +656,7 @@ $result = $_SESSION['result'] ?? null;
         <p id="sealium-key-status" class="settings-status">Status wird geladen …</p>
         <label for="sealium-api-key">API-Schlüssel</label>
         <input type="password" id="sealium-api-key" name="api_key" autocomplete="new-password" maxlength="512" placeholder="Sealium API-Schlüssel eingeben" required>
-        <p class="settings-help">Ein vorhandener Schlüssel wird aus Sicherheitsgründen nicht angezeigt. Ein neuer Schlüssel ersetzt den bisherigen.</p>
+        <p class="settings-help">Ein vorhandener Schlüssel wird aus Sicherheitsgründen nicht angezeigt. Ein neuer Schlüssel ersetzt den bisherigen. API-Schlüssel und Informationen gibt es bei <a href="https://sealium.eu" target="_blank" rel="noopener noreferrer">Sealium</a>.</p>
         <div id="sealium-settings-message" class="settings-message" role="status" aria-live="polite"></div>
         <div class="dialog-actions">
             <button type="button" class="dialog-cancel" id="sealium-dialog-cancel">Abbrechen</button>
