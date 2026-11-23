@@ -16,7 +16,7 @@ Erste stabile Version.
 
 ### Funktionen
 - PDFs zusammenführen, aufteilen und verschachteln
-- PDFs mit individuellem Vorspann nummerieren
+- PDFs mit individuellem Vorspann paginieren
 - PDF-Komprimierung mit Profilwahl und optional parallelen Ghostscript-Läufen
 - PDF/A-Erstellung in den Varianten PDF/A-1b, PDF/A-2b und PDF/A-3b
 - OCR/Texterkennung für Deutsch, Englisch oder Deutsch + Englisch
