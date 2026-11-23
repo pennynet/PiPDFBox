@@ -488,7 +488,7 @@ $pages = [
         'Internetzugriff erfordert zusätzliche Maßnahmen wie TLS, restriktive',
         'Zugriffskontrolle, Firewall-Regeln und regelmäßige Sicherheitsupdates.',
     ],
-;
+];
 
 $objects = [];
 $addObject = static function (string $body) use (&$objects): int {
