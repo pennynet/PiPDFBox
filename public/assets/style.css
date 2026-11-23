@@ -904,3 +904,12 @@
     grid-column: 1 / -1;
     width: max-content;
 }
+
+
+/* OCR-Checkbox vertikal wie die Option „Parallelverarbeitung“ ausrichten. */
+.tool-ocr .tool-content .option-check {
+    align-items: center;
+}
+.tool-ocr .tool-content .option-check input[type="checkbox"] {
+    margin-top: 0;
+}
