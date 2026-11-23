@@ -222,7 +222,7 @@
 
 /* Komprimierungsoption oberhalb des Auswahlfelds; Eingabefeld exakt wie Selects ausrichten. */
 .tool-compress .option-check {
-    /* Das Auswahlfeld wird auf die Höhe des Eingabefelds in der Nummerieren-Kachel ausgerichtet. */
+    /* Das Auswahlfeld wird auf die Höhe des Eingabefelds in der Paginieren-Kachel ausgerichtet. */
     margin: 0 0 -1px !important;
 }
 .tool-content select,
