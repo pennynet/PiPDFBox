@@ -368,7 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $error = 'Zum Komprimieren bitte genau eine PDF auswählen.';
                 }
                 if (!$error && $op === 'number' && count($valid) !== 1) {
-                    $error = 'Zum Nummerieren bitte genau eine PDF auswählen.';
+                    $error = 'Zum Paginieren bitte genau eine PDF auswählen.';
                 }
                 if (!$error && $op === 'sign' && count($valid) !== 1) {
                     $error = 'Es kann immer nur eine PDF-Datei gleichzeitig signiert werden. Bitte genau eine Datei auswählen.';
@@ -516,7 +516,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $actionNames = [
                                     'merge' => 'zusammengefuehrt', 'split' => 'aufgeteilt',
                                     'interleave' => 'vorder-rueckseiten', 'compress' => 'komprimiert',
-                                    'number' => 'nummeriert', 'pdfa' => 'archiv', 'ocr' => 'durchsuchbar',
+                                    'number' => 'paginiert', 'pdfa' => 'archiv', 'ocr' => 'durchsuchbar',
                                     'sign' => 'signiert'
                                 ];
                                 if ($filenameMode === 'action') {
@@ -857,15 +857,15 @@ $result = $_SESSION['result'] ?? null;
             <section class="tool-card tool-number">
                 <div class="tool-icon">☷</div>
                 <div class="tool-content">
-                    <h3>PDF nummerieren</h3>
+                    <h3>PDF paginieren</h3>
                     <p>Seitennummern mit individuellem Vorspann hinzufügen.</p>
                     <label class="option-label" for="number_prefix">
-                        Vorspann für die Seitennummerierung
+                        Vorspann für die Paginierung
                     </label>
                     <input type="text" id="number_prefix" name="number_prefix"
                            maxlength="150" placeholder="z. B. Vertraulich – Projektakte">
                     <button class="task-button" type="submit" name="action" value="number">
-                        PDF nummerieren
+                        PDF paginieren
                     </button>
                 </div>
             </section>
@@ -983,7 +983,7 @@ $result = $_SESSION['result'] ?? null;
                 <input type="hidden" name="action" value="save_filename_settings">
                 <h3 id="filename-dialog-title">Dateinamen</h3>
                 <label><input type="radio" name="filename_mode" value="current" <?= $filenameMode === 'current' ? 'checked' : '' ?>> Bisherige Dateinamen verwenden</label>
-                <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>> Originalname + Aktion (z. B. test-nummeriert.pdf)</label>
+                <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>> Originalname + Aktion (z. B. test-paginiert.pdf)</label>
                 <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>> Datum + Originalname (z. B. 261120-test.pdf)</label>
                 <label><input type="radio" name="filename_mode" value="date_prefix" <?= $filenameMode === 'date_prefix' ? 'checked' : '' ?>> Datum + Prefix + Originalname (Prefix wird bei jeder Verarbeitung abgefragt)</label>
                 <div class="dialog-actions">
