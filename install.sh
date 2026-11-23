@@ -830,10 +830,26 @@ uninstall_app() {
         }
     fi
 
-    rm -f /usr/local/bin/pipdfbox
-    rm -f /usr/local/sbin/pipdfbox-set-sealium-key
-    rm -f /etc/sudoers.d/pipdfbox-sealium
-    rm -f "$POLKIT_RULE"
+    # Legacy-Installationen koennen diese Integrationsdateien hinterlassen.
+    # Explizite Liste erleichtert Vollstaendigkeitspruefung und Wartung.
+    local integration_file
+    local integration_files=(
+        /usr/local/bin/pipdfbox
+        /usr/local/sbin/pipdfbox-set-sealium-key
+        /etc/sudoers.d/pipdfbox-sealium
+        "$POLKIT_RULE"
+    )
+    for integration_file in "${integration_files[@]}"; do
+        rm -f -- "$integration_file"
+    done
+
+    # Zeitgestempelte Nginx-Sicherungen aus frueheren Installationsstaenden
+    # nochmals gezielt entfernen (keine fremden Site-Dateien).
+    if [[ -d /etc/nginx/sites-available ]]; then
+        find /etc/nginx/sites-available -maxdepth 1 -type f -name 'pipdfbox.backup.*' -delete
+        find /etc/nginx/sites-available -maxdepth 1 -type f -name 'pipdfbox.rollback.*' -delete
+        find /etc/nginx/sites-available -maxdepth 1 -type f -name 'pipdfbox.tmp.*' -delete
+    fi
 
     if [[ -f "$PHP_INI_FILE" ]]; then
         rm -f "$PHP_INI_FILE"
