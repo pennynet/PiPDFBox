@@ -429,9 +429,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             }
                         }
 
-                        if ($op === 'merge' && ($_POST['reverse_inputs'] ?? '') === '1') {
-                            $args[] = '--reverse-inputs';
-                        }
 
                         if ($op === 'compress') {
                             $profile = (string)($_POST['compress_profile'] ?? 'stark');
