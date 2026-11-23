@@ -11,6 +11,12 @@ Diese Anleitung ergänzt den Installer für Debian GNU/Linux 13 (Trixie). Der un
 
 Der Installer installiert bzw. prüft die benötigten Pakete, darunter sudo, polkitd, Nginx, PHP 8.4 FPM (mit fileinfo, session, mbstring und zip), Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch. Für die PDF-Signierung baut er OpenSC 0.27.1 aus dem offiziellen, per SHA-256 geprüften Quellarchiv und installiert pyHanko 0.38.2 samt Abhängigkeiten mit pip in `/opt/pipdfbox/python`. Es wird keine virtuelle Python-Umgebung angelegt.
 
+### Festgelegte OpenSC-Laufzeitversion
+
+PiPDFBox verwendet für PKCS#11 ausdrücklich den eigenen Build unter `/opt/opensc-0.27.1`: `/opt/opensc-0.27.1/bin/pkcs11-tool` und `/opt/opensc-0.27.1/lib/opensc-pkcs11.so`. Die Installationsnotiz `/opt/opensc-0.27.1/share/pipdfbox/opensc-build-info.txt` hält Version, Quellarchiv und SHA-256-Prüfsumme fest. Die dynamische Linker-Konfiguration verweist auf `/opt/opensc-0.27.1/lib`.
+
+Ein Debian-OpenSC-Paket unter `/usr` kann parallel vorhanden sein, wird von PiPDFBox aber nicht als PKCS#11-Modul verwendet. **`apt upgrade` soll weiterhin normal ausgeführt werden.** Es aktualisiert Debian-Systempakete und überschreibt nicht den getrennten Prefix unter `/opt`. Falls Debian Trixie später eine geeignete OpenSC-Version anbietet, wird ein Wechsel erst nach Kompatibilitätsprüfung mit Kartenleser, D-TRUST-Karte und Signaturtests vorgenommen; bis dahin bleibt der Projekt-Build maßgeblich.
+
 ## Neuinstallation
 
 ```bash
