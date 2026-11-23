@@ -785,10 +785,10 @@ audit_uninstall() {
     check_removed_path() {
         path="$1"
         if [[ -e "$path" || -L "$path" ]]; then
-            printf '[NOCH VORHANDEN] %s\\n' "$path"
+            printf '[NOCH VORHANDEN] %s\n' "$path"
             ((failed+=1))
         else
-            printf '[OK]            %s\\n' "$path"
+            printf '[OK]            %s\n' "$path"
             ((ok+=1))
         fi
     }
@@ -828,15 +828,15 @@ audit_uninstall() {
     fi
 
     if systemctl list-unit-files --no-legend 2>/dev/null | grep -q 'pipdfbox-cleanup'; then
-        printf '[NOCH VORHANDEN] systemd-Unit pipdfbox-cleanup registriert\\n'
+        printf '[NOCH VORHANDEN] systemd-Unit pipdfbox-cleanup registriert\n'
         ((failed+=1))
     else
-        printf '[OK]            Keine PiPDFBox-Systemd-Unit registriert\\n'
+        printf '[OK]            Keine PiPDFBox-Systemd-Unit registriert\n'
         ((ok+=1))
     fi
 
     echo
-    printf 'Prüfung: %d OK, %d noch vorhanden\\n' "$ok" "$failed"
+    printf 'Prüfung: %d OK, %d noch vorhanden\n' "$ok" "$failed"
     if (( failed == 0 )); then
         echo "PiPDFBox restlos entfernt"
         return 0
