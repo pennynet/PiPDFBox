@@ -109,8 +109,12 @@ function renderFiles() {
     }
     list.replaceChildren();
     uploadPrompt.hidden = files.length > 0;
+    const displayedCount = files.length + (list.dataset.resultUrl ? 1 : 0);
+    const columns = displayedCount <= 1 ? 2 : Math.min(displayedCount, 5);
+    list.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    let clearAll = null;
     if (files.length > 1) {
-        const clearAll = document.createElement('button');
+        clearAll = document.createElement('button');
         clearAll.type = 'button';
         clearAll.className = 'pdf-clear-all';
         clearAll.textContent = '× Alle Dateien entfernen';
@@ -119,7 +123,6 @@ function renderFiles() {
             event.stopPropagation();
             setFiles([]);
         });
-        list.appendChild(clearAll);
     }
     if (!files.length && !list.dataset.resultUrl) {
         const empty = document.createElement('span');
@@ -242,6 +245,7 @@ function renderFiles() {
         output.appendChild(remove);
         list.appendChild(output);
     }
+    if (clearAll) list.appendChild(clearAll);
 }
 
 // Beim Seitenaufbau ebenfalls rendern: Nach einem abgeschlossenen Auftrag
