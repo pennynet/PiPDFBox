@@ -15,7 +15,7 @@ PiPDFBox ist eine selbst gehostete Webanwendung zur Verarbeitung von PDF-Dateien
 | Komprimieren | PDF-Dateigröße mit wählbarem Profil reduzieren |
 | Archivieren | PDF/A-1b, PDF/A-2b oder PDF/A-3b erzeugen |
 | Texterkennung | Scans mit OCR durchsuchbar machen (Deutsch, Englisch oder beide) |
-| PDF signieren | PAdES-Signatur direkt im PDF (optional mit B-LTA-Langzeitvalidierung) oder separate CAdES-Signaturdatei (.p7s) mit D-TRUST-Signaturkarte; optional sichtbarer Stempel bei PAdES; RFC-3161-Zeitstempel bei B-LTA und CAdES |
+| PDF signieren | PAdES-Signatur direkt im PDF (optional mit B-LTA-Langzeitvalidierung) oder CAdES als getrennte .p7s-Signatur. CAdES wird gemeinsam mit dem unveränderten Original-PDF als ZIP bereitgestellt; optional sichtbarer Stempel bei PAdES; RFC-3161-Zeitstempel bei B-LTA und CAdES |
 
 Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signaturkarte. Die Signatur-PIN wird ausschließlich am geschützten PIN-Pad des Kartenlesers eingegeben.
 
@@ -96,7 +96,7 @@ Die Deinstallation entfernt keine allgemeinen Systempakete wie Nginx, PHP, Ghost
 
 ## Dokumentation und Tests
 
-- [PiPDFBox-Handbuch (PDF)](public/handbuch.pdf)
+- [PiPDFBox-Handbuch (PDF, dynamisch erzeugt)](public/handbuch.php)
 
 - [Installations- und Wiederherstellungsdetails](INSTALLATION.md)
 - [Änderungshistorie](CHANGELOG.md)
@@ -109,7 +109,7 @@ Lokaler Web-Smoke-Test (benötigt PHP CLI, Python 3, curl und das Python-Modul p
 bash tests/web-smoke.sh
 ```
 
-Der Web-Smoke-Test führt auch den isolierten CAdES-ZIP-Test mit synthetischen Dateien aus. Dieser prüft ZIP-Inhalt, Dateiintegrität und den unveränderten PDF-Hash; eine echte Karten-Signierung ist darin nicht enthalten.
+Der Web-Smoke-Test führt auch den isolierten CAdES-ZIP-Test mit synthetischen Dateien aus. Dieser prüft ZIP-Inhalt, Dateiintegrität und den unveränderten PDF-Hash; eine echte Karten-Signierung ist darin nicht enthalten. Bei CAdES erzeugt PiPDFBox nach erfolgreicher Signierung ein ZIP mit genau zwei Einträgen: dem unveränderten Original-PDF und der getrennten .p7s-Signatur. Das Handbuch wird über public/handbuch.php als PDF dynamisch aus der aktuellen Handbuchquelle erzeugt.
 
 Worker-Benchmarks mit eigenen, nicht vertraulichen Test-PDFs:
 
