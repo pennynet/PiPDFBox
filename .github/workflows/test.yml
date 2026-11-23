@@ -16,16 +16,21 @@ jobs:
       - name: Install test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y php-cli php-mbstring php-zip ghostscript qpdf
+          sudo apt-get install -y php-cli php-mbstring php-zip ghostscript qpdf poppler-utils
           python -m pip install --upgrade pip
           python -m pip install pypdf
       - name: Check PHP syntax
         run: |
           php -l public/index.php
+          php -l public/handbuch.php
           php -l public/cades-zip.php
           php -l public/download.php
           php -l public/zip-content.php
           php -l public/delete-result.php
+      - name: Generate and inspect handbook PDF
+        run: |
+          php public/handbuch.php > /tmp/handbuch-test.pdf
+          pdfinfo /tmp/handbuch-test.pdf
       - name: Compile Python worker
         run: python -m py_compile worker.py
       - name: Run isolated web smoke test
