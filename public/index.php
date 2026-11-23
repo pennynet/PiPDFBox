@@ -619,7 +619,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=44">
+    <link rel="stylesheet" href="/assets/style.css?v=45">
 </head>
 <body>
 
@@ -917,16 +917,16 @@ $result = $_SESSION['result'] ?? null;
                 <div class="tool-content">
                     <h3>PDF Texterkennung</h3>
                     <p>Scan-PDFs durchsuchbar machen.</p>
+                    <label class="option-check">
+                        <input type="checkbox" name="ocr_textfile" value="1" checked>
+                        Textdatei erstellen
+                    </label>
                     <label class="option-label" for="ocr_language">Erkennungssprache</label>
                     <select id="ocr_language" name="ocr_language">
                         <option value="deu" selected>Deutsch</option>
                         <option value="eng">Englisch</option>
                         <option value="deu+eng">Deutsch + Englisch</option>
                     </select>
-                    <label class="option-check">
-                        <input type="checkbox" name="ocr_textfile" value="1" checked>
-                        Textdatei erstellen
-                    </label>
                     <button class="task-button" type="submit" name="action" value="ocr">PDF Texterkennung starten</button>
                 </div>
             </section>
