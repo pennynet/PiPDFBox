@@ -778,6 +778,74 @@ update_app() {
     info "Anwendungscode aktualisiert. Einstellungen und PDF-Aufträge bleiben erhalten."
 }
 
+
+audit_uninstall() {
+    local ok=0 failed=0 path unit home checkout
+
+    check_removed_path() {
+        path="$1"
+        if [[ -e "$path" || -L "$path" ]]; then
+            printf '[NOCH VORHANDEN] %s\n' "$path"
+            ((failed+=1))
+        else
+            printf '[OK]            %s\n' "$path"
+            ((ok+=1))
+        fi
+    }
+
+    echo
+    info "Prüfe, ob PiPDFBox vollständig entfernt wurde ..."
+
+    for path in \
+        "$APP_DIR" "$CONFIG_DIR" "$DATA_DIR" \
+        "$OPENSC_PREFIX" "/etc/opensc-$OPENSC_VERSION" \
+        "/etc/ld.so.conf.d/opensc-${OPENSC_VERSION}.conf" \
+        "$NGINX_SITE" "$NGINX_ENABLED" "$PHP_INI_FILE" \
+        "/etc/systemd/system/pipdfbox-cleanup.service" \
+        "/etc/systemd/system/pipdfbox-cleanup.timer" \
+        "/usr/local/bin/pipdfbox" \
+        "/usr/local/sbin/pipdfbox-set-sealium-key" \
+        "/etc/sudoers.d/pipdfbox-sealium" "$POLKIT_RULE"
+    do
+        check_removed_path "$path"
+    done
+
+    for path in \
+        /etc/nginx/sites-available/pipdfbox.backup.* \
+        /etc/nginx/sites-available/pipdfbox.rollback.* \
+        /etc/nginx/sites-available/pipdfbox.tmp.*
+    do
+        [[ -e "$path" || -L "$path" ]] && check_removed_path "$path"
+    done
+
+    # Das Benutzer-Checkout nur prüfen, wenn ein sudo-Aufrufer ermittelt wird.
+    if [[ -n "${SUDO_USER:-}" && "$SUDO_USER" != "root" ]]; then
+        home="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+        if [[ -n "$home" ]]; then
+            checkout="$home/PiPDFBox"
+            check_removed_path "$checkout"
+        fi
+    fi
+
+    if systemctl list-unit-files --no-legend 2>/dev/null | grep -q 'pipdfbox-cleanup'; then
+        printf '[NOCH VORHANDEN] systemd-Unit pipdfbox-cleanup registriert\n'
+        ((failed+=1))
+    else
+        printf '[OK]            Keine PiPDFBox-Systemd-Unit registriert\n'
+        ((ok+=1))
+    fi
+
+    echo
+    printf 'Prüfung: %d OK, %d noch vorhanden\n' "$ok" "$failed"
+    if (( failed == 0 )); then
+        echo "PiPDFBox restlos entfernt"
+        return 0
+    fi
+
+    error "PiPDFBox NICHT restlos entfernt – bitte die markierten Reste prüfen."
+    return 1
+}
+
 uninstall_app() {
     local choice answer
     echo
@@ -905,6 +973,10 @@ uninstall_app() {
         fi
 
         info "PiPDFBox vollständig entfernt: Programm, Konfiguration, Schlüssel, Zertifikate, Aufträge und eigener OpenSC-Build."
+        audit_uninstall || return 1
+        # Nach der vollständigen Deinstallation nicht ins Menü zurückkehren:
+        # APP_DIR und ggf. das aufrufende Checkout existieren nicht mehr.
+        exit 0
     else
         info "Anwendung und Systemintegration entfernt. Konfiguration, Schlüssel, Zertifikate und PDF-Aufträge bleiben erhalten."
     fi
