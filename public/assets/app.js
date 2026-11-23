@@ -310,11 +310,18 @@ async function acceptFiles(incoming) {
                 merged.push(readyFile);
             }
             if (merged.length > 100) throw new Error('Maximal 100 Dateien pro Auftrag.');
-            setFiles(merged);
             if (index === 0) {
+                // Once the result is adopted as an input, it must have only
+                // one visible chip. Clear every result reference before
+                // rendering the updated input list.
                 delete list.dataset.resultUrl;
                 delete list.dataset.resultName;
+                delete list.dataset.resultAction;
+                delete list.dataset.resultJob;
+                delete list.dataset.resultFile;
+                delete list.dataset.resultCsrf;
             }
+            setFiles(merged);
         }
         conversionStatus.textContent = 'Dateien sind bereit.';
     } catch (error) {
@@ -736,6 +743,8 @@ async function deleteResultFile(button) {
         delete list.dataset.resultJob;
         delete list.dataset.resultFile;
         delete list.dataset.resultCsrf;
+        // Deleting the server-side result must not remove an in-memory
+        // copy that was already adopted as an input file.
         renderFiles();
     } catch (error) {
         button.disabled = false;
