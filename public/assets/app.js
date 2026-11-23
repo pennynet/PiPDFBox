@@ -646,7 +646,19 @@ function showSignatureMessage(message, isError = false) {
     signatureResult.replaceChildren();
     const paragraph = document.createElement('p');
     paragraph.className = isError ? 'signature-error' : '';
-    paragraph.textContent = message;
+    const missingSealiumKey = isError && message.includes('Sealium-API-Key fehlt');
+    if (missingSealiumKey) {
+        const sealiumIndex = message.indexOf('Sealium');
+        paragraph.append(document.createTextNode(message.slice(0, sealiumIndex)));
+        const link = document.createElement('a');
+        link.href = 'https://sealium.eu';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Sealium';
+        paragraph.append(link, document.createTextNode(message.slice(sealiumIndex + 'Sealium'.length)));
+    } else {
+        paragraph.textContent = message;
+    }
     signatureResult.appendChild(paragraph);
 }
 
