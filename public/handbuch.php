@@ -22,6 +22,34 @@ $pages = [
         'Software, angeschlossener Hardware und der jeweiligen PDF-Datei ab.',
     ],
     [
+        'Beschreibung und Zweck',
+        'PiPDFBox ist eine lokal betriebene PDF-Werkstatt. Die Weboberfläche nimmt',
+        'Dateien entgegen; die Verarbeitung erfolgt auf dem Raspberry Pi. Uploads,',
+        'Verarbeitung und Ergebnisse verbleiben damit im eigenen Netzwerk und unter',
+        'der Kontrolle des Betreibers. Es wird kein externer PDF-Konvertierungsdienst',
+        'für die eigentlichen Dokumentaufgaben benötigt.',
+        '',
+        'Die Anwendung verbindet eine PHP-Weboberfläche mit einem separaten',
+        'Python-Worker. Nginx nimmt Browseranfragen entgegen und leitet PHP-Aufrufe',
+        'an PHP-FPM weiter. Der Worker übernimmt rechenintensive PDF-Aufgaben.',
+        'Ein globaler Worker-Lock verhindert parallele PDF-Verarbeitungen.',
+        '',
+        'PiPDFBox unterstützt Zusammenführen, Aufteilen, Verschachteln, Paginieren,',
+        'Komprimieren, PDF/A-Erstellung, Texterkennung, Office-Konvertierung und',
+        'digitale Signaturen. Ergebnisse können angezeigt, heruntergeladen und –',
+        'soweit sinnvoll – erneut als Eingabe verwendet werden.',
+        '',
+        'Die Signaturfunktionen benötigen einen kompatiblen Kartenleser und eine',
+        'geeignete D-TRUST-Signaturkarte. Der private Schlüssel verbleibt auf der',
+        'Karte. Die PIN wird über den geschützten PIN-Eingabepfad des Kartenlesers',
+        'eingegeben. Für bestimmte Signaturprofile wird ein RFC-3161-Zeitstempeldienst',
+        'angesprochen.',
+        '',
+        'Dieses Dokument besteht aus der Bedienungsanleitung und einer technischen',
+        'Anlage für Installation, Administration und Fehleranalyse. Die konkrete',
+        'Ausstattung kann sich durch System- und Sicherheitsupdates verändern.',
+    ],
+    [
         '1. Anmeldung und Grundprinzip',
         'Die Weboberfläche im Browser öffnen und mit dem eingerichteten Passwort',
         'anmelden. Die Sitzung wird durch ein CSRF-Token geschützt; bei einer',
@@ -273,7 +301,194 @@ $pages = [
         'Anwendung über das Installationsmenü aktualisieren und im Browser Strg+F5',
         'drücken, damit keine alte JavaScript- oder CSS-Version aus dem Cache läuft.',
     ],
-];
+    [
+        'Anlage A – Technische Dokumentation',
+        'Diese Anlage richtet sich an Administratoren und technisch versierte',
+        'Anwender. Sie beschreibt die im PiPDFBox-Installer festgelegte Architektur',
+        'und die vorgesehenen Komponenten. Debian-Sicherheitsupdates können einzelne',
+        'Paketstände verändern; festgelegte Projektversionen sind ausdrücklich genannt.',
+        '',
+        'A.1 Systemarchitektur und Verzeichnisse',
+        'Zielplattform ist Raspberry Pi 5 mit Debian GNU/Linux 13 (Trixie). Nginx',
+        'stellt /opt/pipdfbox/public bereit. PHP 8.4 FPM führt PHP-Endpunkte über',
+        '/run/php/php8.4-fpm.sock aus. Der Python-Worker verarbeitet PDF-Aufträge.',
+        '',
+        'Wichtige Pfade:',
+        '- /opt/pipdfbox: Anwendungscode.',
+        '- /opt/pipdfbox/python: pyHanko und Python-Abhängigkeiten der Signierung.',
+        '- /opt/opensc-0.27.1: eigens gebautes OpenSC samt PKCS#11-Modul.',
+        '- /etc/pipdfbox: Zugangskonfiguration und Webserver-Port.',
+        '- /var/lib/pipdfbox/jobs: Uploads, Ergebnisse und temporäre Auftragsdaten.',
+        '- /var/lib/pipdfbox/certificates: zwischengespeicherte öffentliche CA-Zertifikate.',
+        'Laufzeit- und Konfigurationsdaten gehören nicht ins Git-Repository.',
+        'Auftragsverzeichnisse werden nach mehr als 24 Stunden bereinigt.',
+        '',
+        'A.2 Installierte Debian-Pakete und Aufgaben',
+        '- nginx: HTTP-Webserver und Weiterleitung an PHP-FPM.',
+        '- php8.4-cli und php8.4-fpm: PHP-Laufzeit und FastCGI-Dienst.',
+        '- php8.4-mbstring und php8.4-zip: Zeichenketten- und ZIP-Unterstützung.',
+        '- python3, python3-pip, python3-pypdf und python3-pil: Worker-Laufzeit,',
+        '  Python-Paketinstallation, PDF-Bibliothek und Bildverarbeitung.',
+        '- ghostscript: PDF-Neuberechnung und Komprimierung.',
+        '- qpdf: PDF-Struktur- und Stream-Optimierung.',
+        '- poppler-utils: zusätzliche PDF-Werkzeuge.',
+        '- libreoffice, libreoffice-writer, libreoffice-calc und libreoffice-impress:',
+        '  Konvertierung von Word-, Excel- und PowerPoint-Dateien nach PDF.',
+        '- ocrmypdf: OCR-Pipeline und PDF/A-Konvertierung.',
+        '- tesseract-ocr, tesseract-ocr-deu, tesseract-ocr-eng und',
+        '  tesseract-ocr-osd: Texterkennung für Deutsch/Englisch und Orientierung.',
+        '- pcscd: PC/SC-Dienst für Smartcard-Leser.',
+        '- libccid und libifd-cyberjack6: Treiberunterstützung für Kartenleser.',
+        '- libpcsclite-dev: PC/SC-Entwicklungsdateien für den OpenSC-Build.',
+        '- libssl-dev, libreadline-dev und zlib1g-dev: Entwicklungsbibliotheken.',
+        '- autoconf, automake, build-essential, docbook-xsl, xsltproc, libtool',
+        '  und pkg-config: Konfigurations- und Build-Werkzeuge für OpenSC.',
+        'ca-certificates, curl, tar und iproute2 unterstützen Downloads,',
+        'Zertifikatsprüfung, Archivverarbeitung und Portprüfung.',
+    ],
+    [
+        'Anlage A – Technische Dokumentation (Fortsetzung)',
+        'A.3 Warum OpenSC selbst gebaut wird',
+        'Der Installer baut OpenSC 0.27.1 aus dem offiziellen Release-Quellarchiv.',
+        'Vor dem Entpacken wird die SHA-256-Prüfsumme gegen den im Installer',
+        'hinterlegten Wert geprüft. Installiert wird in einem eigenen Prefix:',
+        '/opt/opensc-0.27.1. Die Bibliothek wird über ld.so.conf.d beim dynamischen',
+        'Linker registriert.',
+        '',
+        'Der separate Build stellt sicher, dass PiPDFBox gezielt die vorgesehene',
+        'OpenSC-Version und deren Werkzeuge verwendet – unabhängig davon, welche',
+        'Version eine Debian-Paketquelle bereitstellt. opensc.py erwartet dort',
+        'pkcs11-tool und opensc-pkcs11.so. Diese festen Pfade vermeiden eine',
+        'unbeabsichtigte Nutzung eines anderen PKCS#11-Moduls.',
+        '',
+        'OpenSC vermittelt den Zugriff auf Smartcards. PKCS#11 ist die standardisierte',
+        'Schnittstelle zu kryptografischen Token. pkcs11-tool liest das öffentliche',
+        'Signaturzertifikat und benötigte öffentliche CA-Zertifikate aus. Die',
+        'private Signaturoperation wird an Karte und Kartenleser delegiert.',
+        '',
+        'A.4 PC/SC, Kartenleser und PIN-Schutz',
+        'pcscd stellt den PC/SC-Dienst bereit. libccid und libifd-cyberjack6 liefern',
+        'Treiberunterstützung. Der Installer aktiviert pcscd.socket, falls vorhanden,',
+        'andernfalls den pcscd-Dienst. Eine Polkit-Regel gestattet dem PHP-FPM-Benutzer',
+        'www-data den erforderlichen PC/SC-Zugriff. Diese Berechtigung ist gezielt',
+        'und sollte nicht pauschal auf weitere Benutzer ausgeweitet werden.',
+        '',
+        'Die PIN wird nicht als Webformularwert von PiPDFBox verarbeitet. Sie wird',
+        'über den geschützten PIN-Eingabepfad (Protected Authentication Path) des',
+        'Kartenlesers eingegeben. Der private Schlüssel ist nicht exportierbar und',
+        'verbleibt auf der Smartcard. PiPDFBox nutzt das öffentliche Zertifikat und',
+        'übergibt den kryptografischen Auftrag an OpenSC/PKCS#11.',
+        '',
+        'A.5 pyHanko und Python-Signaturkomponenten',
+        'pyHanko 0.38.2 und cryptography werden mit pip in /opt/pipdfbox/python',
+        'installiert. Es wird keine virtuelle Python-Umgebung angelegt. opensc.py',
+        'ergänzt diesen Pfad zur Laufzeit. pyHanko erzeugt die Signaturcontainer und',
+        'PDF-Signaturprofile; der externe Signer lässt den privaten Schlüssel über',
+        'pkcs11-tool und die Smartcard verwenden. cryptography wird ab Version',
+        '48.0.0 verlangt; pip installiert die dazugehörigen Python-Abhängigkeiten.',
+    ],
+    [
+        'Anlage A – Technische Dokumentation (Fortsetzung)',
+        'A.6 PAdES – Signatur innerhalb der PDF',
+        'Bei PAdES wird ein PDF-Signaturfeld angelegt. Der Signaturcontainer ist',
+        'in die PDF eingebettet; ByteRange beschreibt die signierten Dokumentbereiche.',
+        'Die Signatur wird mit SHA-256 erstellt und durch den Smartcard-Schlüssel',
+        'kryptografisch erzeugt.',
+        '',
+        'Normales PAdES benötigt keinen Zeitstempelserver. Optional kann B-LTA',
+        'aktiviert werden. Dann fordert pyHanko einen RFC-3161-Zeitstempel an und',
+        'bettet Validierungsinformationen sowie Daten für die Langzeitprüfung ein.',
+        'B-LTA ist nicht standardmäßig aktiviert.',
+        '',
+        'Der sichtbare Stempel ist eine zusätzliche grafische Darstellung. Er ist',
+        'nicht die kryptografische Signatur selbst und ersetzt weder Signaturfeld',
+        'noch Zertifikatsprüfung. Der sichtbare Stempel ist nur bei PAdES verfügbar.',
+        '',
+        'A.7 CAdES – getrennte Signatur',
+        'Bei CAdES wird eine detached CMS/CAdES-Signatur als separate .p7s-Datei',
+        'erzeugt. Die PDF selbst bleibt unverändert. Die Signatur bezieht sich',
+        'kryptografisch auf die Bytes des Originaldokuments. PiPDFBox verpackt',
+        'Original-PDF und .p7s-Datei in ein ZIP-Archiv.',
+        '',
+        'Das Archiv enthält genau zwei Einträge mit gemeinsamem Namensstamm:',
+        '- <Name>.pdf: das unveränderte Original-PDF.',
+        '- <Name>.p7s: die detached Signatur.',
+        'Der Archivname lautet <Name>.zip. CAdES verwendet den konfigurierten',
+        'RFC-3161-Zeitstempeldienst. Sichtbarer Stempel und PAdES-B-LTA sind für',
+        'dieses getrennte Signaturprofil nicht vorgesehen.',
+        '',
+        'A.8 Zertifikatsketten und Vertrauensmodell',
+        'Das Signaturzertifikat wird von der Karte ausgelesen. opensc.py beschafft',
+        'und prüft die öffentlichen D-TRUST-CA-Zertifikate und legt sie unter',
+        '/var/lib/pipdfbox/certificates ab. Dabei werden CA-Eigenschaften und die',
+        'Beziehungen von Aussteller und Inhaber geprüft. Private Schlüssel werden',
+        'dort nicht gespeichert.',
+        '',
+        'Für BaltStamp wird das TSA-Zwischenzertifikat aus der TSA-Antwort gelesen.',
+        'Der BaltStamp-Root wird anhand eines im Programm hinterlegten SHA-256-',
+        'Fingerabdrucks geprüft. Das ist ein anwendungsspezifischer Vertrauensanker.',
+        'Eine erfolgreiche Signaturerstellung beweist nicht automatisch, dass jede',
+        'Gegenstelle die Zertifikatskette als vertrauenswürdig einstuft.',
+    ],
+    [
+        'Anlage A – Technische Dokumentation (Fortsetzung)',
+        'A.9 RFC 3161 und der Zeitstempelserver',
+        'Ein RFC-3161-Time-Stamping-Authority-Dienst (TSA) bestätigt einen',
+        'kryptografischen Zeitstempel zu einem übermittelten Hashwert. Der Client',
+        'sendet nicht nur eine Datumsangabe: Er fordert eine signierte Antwort an,',
+        'die Hashwert und bestätigten Zeitpunkt miteinander verknüpft. Die Antwort',
+        'enthält außerdem Informationen zur TSA-Zertifikatskette.',
+        '',
+        'PiPDFBox verwendet pyHankos HTTPTimeStamper. Als voreingestellter Endpunkt',
+        'ist http://tsa2.baltstamp.lt hinterlegt. In den Einstellungen kann ein',
+        'anderer HTTP- oder HTTPS-Endpunkt gespeichert und ausgewählt werden.',
+        'Zugangsdaten in der URL und URL-Fragmente sind nicht zulässig.',
+        '',
+        'Die Verwendung hängt vom Signaturprofil ab:',
+        '- Normales PAdES: kein TSA-Aufruf erforderlich.',
+        '- PAdES B-LTA: TSA-Aufruf für Dokumentzeitstempel und Langzeitvalidierung.',
+        '- CAdES: RFC-3161-Zeitstempel für die getrennte Signatur.',
+        '',
+        'Ein erfolgreicher HTTP-Aufruf oder eine erreichbare TSA-Adresse ist noch',
+        'kein Nachweis für eine funktionierende RFC-3161-Funktion. Entscheidend',
+        'sind eine gültige Zeitstempelantwort, deren Prüfung und die Validierung',
+        'der zugehörigen Zertifikatskette.',
+        '',
+        'A.10 Signaturprüfung und Grenzen',
+        'Die Weboberfläche erkennt mögliche PDF-Signaturbereiche strukturell über',
+        'den Marker /ByteRange. Das ist eine Erkennungshilfe, keine vollständige',
+        'kryptografische Validierung. Bei einer belastbaren Bewertung sind unter',
+        'anderem Signaturintegrität, Zertifikatskette, Gültigkeitszeitraum,',
+        'Sperrstatus und gegebenenfalls Zeitstempel zu berücksichtigen.',
+        '',
+        'Ein Zeitstempel macht eine Signatur nicht automatisch qualifiziert oder',
+        'rechtlich wirksam. Auch der qualifizierte Status eines Zertifikats und',
+        'seine Eignung für den konkreten Zweck müssen gesondert beurteilt werden.',
+        'Nachträgliche Änderungen signierter PDF-Bytes können die Signatur ungültig',
+        'machen. Für relevante Prüfungen sind unabhängige Validierungswerkzeuge',
+        'einzusetzen.',
+        '',
+        'A.11 Worker, Aufträge und Bereinigung',
+        'PHP übergibt dem Python-Worker Argumente als getrennte Prozessparameter,',
+        'nicht als Shell-Kommandozeile. Der Worker prüft Eingabepfade und erwartet',
+        'Auftragsdateien im jeweiligen Auftragsordner. Ein globaler Lock serialisiert',
+        'PDF-Worker und begrenzt gleichzeitige CPU- und RAM-Last.',
+        '',
+        'Auftragsverzeichnisse unter /var/lib/pipdfbox/jobs enthalten Uploads,',
+        'temporäre Dateien und Ergebnisse. Der systemd-Timer startet zehn Minuten',
+        'nach dem Boot und danach stündlich. Aufträge älter als 24 Stunden werden',
+        'gelöscht. Bei laufendem Worker wird ein Bereinigungslauf übersprungen.',
+        '',
+        'A.12 Administration und Diagnose',
+        'Das Verwaltungsmenü wird mit sudo pipdfbox gestartet. Menüpunkt 3 prüft',
+        'die Installation, Menüpunkt 4 aktualisiert die Anwendung. Für die Diagnose',
+        'sind insbesondere nginx, php8.4-fpm, pcscd.socket bzw. pcscd und',
+        'pipdfbox-cleanup.timer relevant. nginx -t prüft die Webserverkonfiguration.',
+        'Die Anwendung ist für ein vertrauenswürdiges lokales Netzwerk ausgelegt.',
+        'Internetzugriff erfordert zusätzliche Maßnahmen wie TLS, restriktive',
+        'Zugriffskontrolle, Firewall-Regeln und regelmäßige Sicherheitsupdates.',
+    ],
+;
 
 $objects = [];
 $addObject = static function (string $body) use (&$objects): int {
@@ -284,33 +499,60 @@ $addObject = static function (string $body) use (&$objects): int {
 $fontId = $addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
 $pageIds = [];
 
-foreach ($pages as $pageLines) {
-    $commands = ["BT", "/F1 16 Tf", "50 790 Td"];
-    $title = (string)array_shift($pageLines);
+/**
+ * Jede physische Seite erhält ab Seite 2 die zentrierte Kopfzeilennummer.
+ * Längere Kapitel werden auf Folgeseiten fortgesetzt, statt abgeschnitten.
+ */
+$physicalPage = 0;
+$addPdfPage = static function (string $title, array $lines, bool $cover = false) use (&$physicalPage, &$pageIds, $addObject, $fontId): void {
+    $physicalPage++;
+    $commands = [];
+    if (!$cover) {
+        $label = '- ' . $physicalPage . ' -';
+        $label = iconv('UTF-8', 'Windows-1252//TRANSLIT', $label) ?: $label;
+        $label = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $label);
+        $commands[] = 'BT /F1 9 Tf 1 0 0 1 285 812 Tm (' . $label . ') Tj ET';
+    }
+
     $title = iconv('UTF-8', 'Windows-1252//TRANSLIT', $title) ?: $title;
     $title = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $title);
-    $commands[] = '(' . $title . ') Tj';
-    $commands[] = '/F1 10 Tf';
+    $commands[] = 'BT ' . ($cover ? '/F1 24 Tf' : '/F1 15 Tf') . ' 1 0 0 1 50 ' . ($cover ? '770' : '780') . ' Tm (' . $title . ') Tj ET';
 
-    $y = 758;
-    foreach ($pageLines as $line) {
+    $y = $cover ? 720 : 748;
+    foreach ($lines as $line) {
         $line = iconv('UTF-8', 'Windows-1252//TRANSLIT', (string)$line) ?: (string)$line;
-        $line = wordwrap($line, 88, "\n", true);
-        foreach (explode("\n", $line) as $wrappedLine) {
-            if ($y < 48) {
-                break;
-            }
+        foreach (explode("\n", wordwrap($line, 88, "\n", true)) as $wrappedLine) {
             $escaped = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $wrappedLine);
-            $commands[] = '1 0 0 1 50 ' . $y . ' Tm';
-            $commands[] = '(' . $escaped . ') Tj';
-            $y -= 15;
+            $commands[] = 'BT /F1 10 Tf 1 0 0 1 50 ' . $y . ' Tm (' . $escaped . ') Tj ET';
+            $y -= 14;
         }
     }
-    $commands[] = 'ET';
 
     $stream = gzcompress(implode("\n", $commands), 9);
     $contentId = $addObject('<< /Length ' . strlen($stream) . ' /Filter /FlateDecode >>' . "\nstream\n" . $stream . "\nendstream");
     $pageIds[] = $addObject('<< /Type /Page /Parent PAGES 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ' . $fontId . ' 0 R >> >> /Contents ' . $contentId . ' 0 R >>');
+};
+
+foreach ($pages as $pageIndex => $pageLines) {
+    $title = (string)array_shift($pageLines);
+    $cover = ($pageIndex === 0);
+    // Erst umbrechen, dann nach tatsächlichen Druckzeilen aufteilen.
+    // So können lange Absätze die untere Seitenkante nicht unbemerkt überlaufen.
+    $wrappedLines = [];
+    foreach ($pageLines as $line) {
+        $line = iconv('UTF-8', 'Windows-1252//TRANSLIT', (string)$line) ?: (string)$line;
+        foreach (explode("\n", wordwrap($line, 88, "\n", true)) as $wrappedLine) {
+            $wrappedLines[] = $wrappedLine;
+        }
+    }
+    $chunks = array_chunk($wrappedLines, $cover ? 44 : 47);
+    if ($chunks === []) {
+        $chunks = [[]];
+    }
+    foreach ($chunks as $chunkIndex => $chunk) {
+        $pageTitle = $chunkIndex === 0 ? $title : $title . ' (Fortsetzung)';
+        $addPdfPage($pageTitle, $chunk, $cover && $chunkIndex === 0);
+    }
 }
 
 $pagesId = $addObject('<< /Type /Pages /Count ' . count($pageIds) . ' /Kids [' . implode(' ', array_map(static fn (int $id): string => $id . ' 0 R', $pageIds)) . '] >>');
