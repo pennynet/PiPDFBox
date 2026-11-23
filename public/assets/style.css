@@ -303,6 +303,19 @@
     font-size: 13px;
     font-weight: 650;
 }
+#filename-dialog label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+#filename-dialog label input[type="radio"] {
+    flex: 0 0 auto;
+    margin: 2px 0 0;
+}
+#filename-dialog label span {
+    flex: 1;
+    min-width: 0;
+}
 .settings-dialog select,
 .settings-dialog input[type="text"],
 .settings-dialog input[type="url"] {
