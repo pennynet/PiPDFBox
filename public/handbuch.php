@@ -324,6 +324,8 @@ $pages = [
         'Auftragsverzeichnisse werden nach mehr als 24 Stunden bereinigt.',
         '',
         'A.2 Installierte Debian-Pakete und Aufgaben',
+        '- sudo: administrativer Aufruf des Installations- und Verwaltungsmenüs.',
+        '- polkitd: Autorisierungsdienst für den gezielten PC/SC-Zugriff von www-data.',
         '- nginx: HTTP-Webserver und Weiterleitung an PHP-FPM.',
         '- php8.4-cli und php8.4-fpm: PHP-Laufzeit und FastCGI-Dienst.',
         '- php8.4-mbstring und php8.4-zip: Zeichenketten- und ZIP-Unterstützung.',
