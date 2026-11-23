@@ -27,7 +27,7 @@ $file = (string)($_POST['file'] ?? '');
 $result = $_SESSION['result'] ?? null;
 if (!is_array($result)
     || !preg_match('/^[a-f0-9]{32}$/', $job)
-    || !preg_match('/^[A-Za-z0-9_.-]+$/', $file)
+    || !preg_match('/^[\p{L}\p{N}_.-]+$/u', $file)
     || str_contains($file, '..')
     || !hash_equals((string)($result['job'] ?? ''), $job)
     || !hash_equals((string)($result['file'] ?? ''), $file)

@@ -104,7 +104,7 @@ function renderFiles() {
         if (files.length <= 1) reverseInputsCheckbox.checked = false;
     }
     const completionNotice = document.querySelector('.success');
-    if (completionNotice && ['Verarbeitung abgeschlossen.', 'PDF wurde erfolgreich signiert.'].includes(completionNotice.textContent.trim())) {
+    if (completionNotice && ['Verarbeitung abgeschlossen.', 'PDF wurde erfolgreich signiert.', 'CAdES-Signierung erfolgreich. Original-PDF und Signatur stehen gemeinsam als ZIP bereit.'].includes(completionNotice.textContent.trim())) {
         completionNotice.hidden = files.length === 0 && !list.dataset.resultUrl;
     }
     list.replaceChildren();
@@ -221,7 +221,7 @@ function renderFiles() {
             else output.append(open, reuse, download);
         }
 
-        if (list.dataset.resultAction === 'sign' && !isCades) {
+        if (list.dataset.resultAction === 'sign' && !isCades && !isZip) {
             const verify = document.createElement('button');
             verify.type = 'button';
             verify.className = 'pdf-chip-verify';

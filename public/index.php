@@ -68,6 +68,8 @@ function h(string $s): string {
     return htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+require_once __DIR__ . '/cades-zip.php';
+
 /**
  * Startet den PDF-Worker.
  * Bei Erfolg enthält $output ausschließlich den Dateinamen aus stdout.
@@ -544,6 +546,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 }
                             }
 
+                            // CAdES wird als gemeinsames ZIP-Ergebnis aus Original-PDF und Signaturdatei bereitgestellt.
+                            if (!$error && $op === 'sign' && $signProfile === 'cades' && $out !== '' && $base === basename($base) && is_file($dir . '/' . $base)) {
+                                $archiveStem = $base;
+                                if (str_ends_with(strtolower($archiveStem), '.pdf.p7s')) {
+                                    $archiveStem = substr($archiveStem, 0, -8);
+                                } elseif (str_ends_with(strtolower($archiveStem), '.p7s')) {
+                                    $archiveStem = substr($archiveStem, 0, -4);
+                                } else {
+                                    $error = 'Die erzeugte CAdES-Signaturdatei hat einen unerwarteten Dateinamen.';
+                                }
+
+                                if (!$error && ($archiveStem === '' || $archiveStem === '.' || $archiveStem === '..' || str_contains($archiveStem, '/') || str_contains($archiveStem, '\\') || str_contains($archiveStem, chr(0)))) {
+                                    $error = 'Der Dateiname für das CAdES-ZIP-Archiv ist ungültig.';
+                                }
+
+                                if (!$error && !createCadesZipArchive($dir, $paths[0], $dir . '/' . $base, $archiveStem)) {
+                                    $error = 'CAdES-Ergebnis konnte nicht sicher als ZIP-Archiv erstellt werden.';
+                                } elseif (!$error) {
+                                    $base = $archiveStem . '.zip';
+                                }
+                            }
+
                             if (
                                 !$error &&
                                 $out !== '' &&
@@ -559,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                                 $notice = $op === 'sign'
                                     ? ($signProfile === 'cades'
-                                        ? 'CAdES-Signaturdatei wurde erfolgreich erstellt.'
+                                        ? 'CAdES-Signierung erfolgreich. Original-PDF und Signatur stehen gemeinsam als ZIP bereit.'
                                         : ($usePadesBltA
                                         ? 'PDF wurde erfolgreich mit PAdES B-LTA signiert.'
                                         : 'PDF wurde erfolgreich mit PAdES signiert.'))

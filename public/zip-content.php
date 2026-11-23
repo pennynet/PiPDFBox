@@ -22,7 +22,7 @@ $file = (string)($_GET['file'] ?? '');
 $mode = (string)($_GET['mode'] ?? '');
 
 if (!preg_match('/^[a-f0-9]{32}$/', $job) ||
-    !preg_match('/^[A-Za-z0-9_.-]+\.zip$/i', $file) ||
+    !preg_match('/^[\p{L}\p{N}_.-]+\.zip$/iu', $file) ||
     str_contains($file, '..')) {
     zipError(400, 'Ungültige ZIP-Anfrage.');
 }
@@ -133,7 +133,8 @@ if ($mode === 'download') {
     $isPdf = str_ends_with(strtolower($name), '.pdf');
     $mime = $isPdf ? 'application/pdf' : 'application/octet-stream';
     header('Content-Type: ' . $mime);
-    header('Content-Disposition: ' . ($isPdf ? 'inline' : 'attachment') . '; filename="' . str_replace(['"', "\\", "\r", "\n"], '_', $name) . '"');
+    $fallbackName = preg_replace('/[^A-Za-z0-9_.-]/', '_', $name) ?: 'download';
+    header('Content-Disposition: ' . ($isPdf ? 'inline' : 'attachment') . '; filename="' . $fallbackName . '"; filename*=UTF-8\'\'' . rawurlencode($name));
     $stat = $zip->statName($entry);
     if (is_array($stat) && isset($stat['size'])) header('Content-Length: ' . (int)$stat['size']);
     fpassthru($stream);

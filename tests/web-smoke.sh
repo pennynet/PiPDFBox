@@ -32,8 +32,8 @@ for cmd in php python3 curl; do
     command -v "$cmd" >/dev/null 2>&1 || fail "Benötigtes Programm fehlt: $cmd"
 done
 
-php -r 'exit(extension_loaded("fileinfo") && extension_loaded("session") && function_exists("proc_open") ? 0 : 1);' \
-    || fail "PHP benötigt fileinfo, session und proc_open."
+php -r 'exit(extension_loaded("fileinfo") && extension_loaded("session") && extension_loaded("zip") && function_exists("proc_open") ? 0 : 1);' \
+    || fail "PHP benötigt fileinfo, session, zip und proc_open."
 python3 -c 'import pypdf' >/dev/null 2>&1 \
     || fail "Python-Modul pypdf fehlt (für Test-PDFs und Ergebnisprüfung)."
 
@@ -110,6 +110,8 @@ PY
 
 "$PHP_BIN" -l "$TMP_DIR/public/index.php" >/dev/null || fail "PHP-Syntaxfehler in index.php."
 "$PHP_BIN" -l "$TMP_DIR/public/download.php" >/dev/null || fail "PHP-Syntaxfehler in download.php."
+"$PHP_BIN" -l "$ROOT_DIR/public/cades-zip.php" >/dev/null || fail "PHP-Syntaxfehler in cades-zip.php."
+"$PHP_BIN" "$ROOT_DIR/tests/cades-zip-smoke.php" || fail "CAdES-ZIP-Smoke-Test fehlgeschlagen."
 
 python3 - "$TMP_DIR/data" <<'PY'
 from pathlib import Path
