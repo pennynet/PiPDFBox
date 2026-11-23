@@ -982,10 +982,10 @@ $result = $_SESSION['result'] ?? null;
                 <input type="hidden" name="csrf" value="<?= h($_SESSION['csrf']) ?>">
                 <input type="hidden" name="action" value="save_filename_settings">
                 <h3 id="filename-dialog-title">Dateinamen</h3>
-                <label><input type="radio" name="filename_mode" value="current" <?= $filenameMode === 'current' ? 'checked' : '' ?>> Bisherige Dateinamen verwenden</label>
-                <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>> Originalname + Aktion (z. B. test-paginiert.pdf)</label>
-                <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>> Datum + Originalname (z. B. 261120-test.pdf)</label>
-                <label><input type="radio" name="filename_mode" value="date_prefix" <?= $filenameMode === 'date_prefix' ? 'checked' : '' ?>> Datum + Prefix + Originalname (Prefix wird bei jeder Verarbeitung abgefragt)</label>
+                <label><input type="radio" name="filename_mode" value="current" <?= $filenameMode === 'current' ? 'checked' : '' ?>><span>Bisherige Dateinamen verwenden</span></label>
+                <label><input type="radio" name="filename_mode" value="action" <?= $filenameMode === 'action' ? 'checked' : '' ?>><span>Originalname + Aktion (z. B. test-paginiert.pdf)</span></label>
+                <label><input type="radio" name="filename_mode" value="date" <?= $filenameMode === 'date' ? 'checked' : '' ?>><span>Datum + Originalname (z. B. 261120-test.pdf)</span></label>
+                <label><input type="radio" name="filename_mode" value="date_prefix" <?= $filenameMode === 'date_prefix' ? 'checked' : '' ?>><span>Datum + Prefix + Originalname (Prefix wird bei jeder Verarbeitung abgefragt)</span></label>
                 <div class="dialog-actions">
                     <button type="button" class="dialog-cancel" id="filename-dialog-cancel">Abbrechen</button>
                     <button type="submit" class="primary">Speichern</button>
