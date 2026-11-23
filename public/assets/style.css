@@ -889,3 +889,18 @@
     min-width: 13px;
     margin: 0 !important;
 }
+
+
+/* Dynamisches Dateiraster: 1 Datei halbbreit, danach bis zu 5 Spalten. */
+.pdf-file-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 66px;
+    grid-auto-flow: row;
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.pdf-clear-all {
+    grid-column: 1 / -1;
+    width: max-content;
+}
