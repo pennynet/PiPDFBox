@@ -304,8 +304,8 @@ python3 - "$TMP_DIR/number.result" <<'PY'
 from pypdf import PdfReader
 import sys
 if len(PdfReader(sys.argv[1], strict=True).pages) != 2:
-    raise SystemExit("Nummerierung hat die Seitenzahl verändert.")
-print("OK: Nummerierung erzeugt eine gültige PDF mit 2 Seiten")
+    raise SystemExit("Paginierung hat die Seitenzahl verändert.")
+print("OK: Paginierung erzeugt eine gültige PDF mit 2 Seiten")
 PY
 
 csrf="$(extract_csrf "$TMP_DIR/number.html")"
@@ -322,5 +322,5 @@ print("OK: Komprimierung erzeugt eine gültige PDF mit 2 Seiten")
 PY
 
 echo "PiPDFBox Web-Smoke-Test erfolgreich abgeschlossen."
-echo "Geprüft: Login-CSRF, Verarbeitungs-CSRF, Merge, Split, Interleave, Nummerierung, Komprimierung und Download-Schutz."
+echo "Geprüft: Login-CSRF, Verarbeitungs-CSRF, Merge, Split, Interleave, Paginierung, Komprimierung und Download-Schutz."
 echo "Nicht Bestandteil dieses Smoke-Tests: PHP-FPM, Nginx und Installer."
