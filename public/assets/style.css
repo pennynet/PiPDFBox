@@ -274,8 +274,7 @@
 
 /* PDF/A- und OCR-Kacheln: eine zusätzliche Leerzeile nach der Beschreibung,
    damit die Auswahlfelder auf Höhe der linken Eingabefelder beginnen. */
-.tool-pdfa .tool-content p,
-.tool-ocr .tool-content p {
+.tool-pdfa .tool-content p {
     min-height: 4.2em;
 }
 
