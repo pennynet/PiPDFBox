@@ -880,6 +880,30 @@ uninstall_app() {
         rm -f -- "/etc/ld.so.conf.d/opensc-${OPENSC_VERSION}.conf"
         ldconfig
 
+        # Das manuell geklonte Benutzer-Checkout ist kein Teil von APP_DIR.
+        # Nur entfernen, wenn es im Home des aufrufenden sudo-Benutzers liegt
+        # und sein origin eindeutig auf das offizielle PiPDFBox-Repository zeigt.
+        local invoking_user invoking_home checkout_dir checkout_origin
+        invoking_user="${SUDO_USER:-}"
+        if [[ -n "$invoking_user" && "$invoking_user" != "root" ]]; then
+            invoking_home="$(getent passwd "$invoking_user" | cut -d: -f6)"
+            if [[ -n "$invoking_home" ]]; then
+                checkout_dir="$invoking_home/PiPDFBox"
+                if [[ -d "$checkout_dir/.git" ]]; then
+                    checkout_origin="$(git -C "$checkout_dir" remote get-url origin 2>/dev/null || true)"
+                    case "$checkout_origin" in
+                        https://github.com/pennynet/PiPDFBox.git|https://github.com/pennynet/PiPDFBox|git@github.com:pennynet/PiPDFBox.git|ssh://git@github.com/pennynet/PiPDFBox.git)
+                            rm -rf -- "$checkout_dir"
+                            info "Offizielles Benutzer-Checkout entfernt: $checkout_dir"
+                            ;;
+                        *)
+                            info "Benutzerverzeichnis nicht entfernt (kein eindeutig verifiziertes PiPDFBox-Checkout): $checkout_dir"
+                            ;;
+                    esac
+                fi
+            fi
+        fi
+
         info "PiPDFBox vollständig entfernt: Programm, Konfiguration, Schlüssel, Zertifikate, Aufträge und eigener OpenSC-Build."
     else
         info "Anwendung und Systemintegration entfernt. Konfiguration, Schlüssel, Zertifikate und PDF-Aufträge bleiben erhalten."
