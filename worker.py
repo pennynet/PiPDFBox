@@ -169,7 +169,7 @@ def main():
             overlay = make_number_overlay(width, height, label)
             page.merge_page(overlay)
 
-        name = 'nummeriert.pdf'
+        name = 'paginiert.pdf'
         with open(outdir / name, 'wb') as f:
             writer.write(f)
 
