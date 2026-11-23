@@ -42,6 +42,19 @@ require_root() {
     fi
 }
 
+require_supported_os() {
+    if [[ ! -r /etc/os-release ]]; then
+        error "Betriebssystem konnte nicht erkannt werden. Unterstützt wird Debian 13 (Trixie)."
+        return 1
+    fi
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    if [[ "${VERSION_CODENAME:-}" != "trixie" || ( "${ID:-}" != "debian" && "${ID:-}" != "raspbian" ) ]]; then
+        error "Nicht unterstütztes Betriebssystem: ${PRETTY_NAME:-unbekannt}. Erwartet wird Debian 13 (Trixie)."
+        return 1
+    fi
+}
+
 
 download_app_from_github() {
     local temp_dir archive extracted
@@ -106,6 +119,8 @@ REQUIRED_PACKAGES=(
     ca-certificates
     curl
     tar
+    sudo
+    polkitd
     nginx
     php8.4-cli
     php8.4-fpm
@@ -197,6 +212,10 @@ check_dependencies() {
     php8.4 -m | grep -qi '^json$' || { error "PHP-Erweiterung json fehlt."; return 1; }
     php8.4 -m | grep -qi '^mbstring$' || { error "PHP-Erweiterung mbstring fehlt."; return 1; }
     php8.4 -m | grep -qi '^zip$' || { error "PHP-Erweiterung zip fehlt."; return 1; }
+    php8.4 -r 'exit(extension_loaded("fileinfo") && function_exists("proc_open") ? 0 : 1);' || {
+        error "PHP-Erweiterung fileinfo oder Funktion proc_open fehlt."
+        return 1
+    }
     phpenmod -v 8.4 zip || { error "PHP-Erweiterung zip konnte nicht aktiviert werden."; return 1; }
     systemctl restart php8.4-fpm || { error "PHP-FPM konnte nicht neu gestartet werden."; return 1; }
     command -v ocrmypdf >/dev/null || { error "OCRmyPDF ist nicht verfügbar."; return 1; }
@@ -804,6 +823,7 @@ uninstall_app() {
 
 main() {
     require_root
+    require_supported_os || exit 1
     while true; do
         echo
         echo "================================"

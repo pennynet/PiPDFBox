@@ -22,11 +22,11 @@ Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signatur
 ## Voraussetzungen
 
 - Raspberry Pi (getestet auf Raspberry Pi 5 mit 8 GB RAM)
-- Debian GNU/Linux 13 (Trixie)
+- Debian GNU/Linux 13 (Trixie); der Installer bricht auf nicht unterstützten Betriebssystemen ab
 - Netzwerkverbindung und sudo-Rechte
 - Zugriff auf das GitHub-Repository
 
-Der Installer prüft und installiert die benötigten Systempakete. Dazu gehören unter anderem Nginx, PHP 8.4 FPM, Python 3, Ghostscript, qpdf, Poppler, OCRmyPDF und Tesseract mit deutschen und englischen Sprachdaten. Zusätzlich baut er OpenSC 0.27.1 aus dem offiziellen Quellarchiv und installiert pyHanko 0.38.2 samt Python-Abhängigkeiten in einer anwendungseigenen Paketablage unter /opt/pipdfbox/python. Es wird keine virtuelle Python-Umgebung verwendet.
+Der Installer prüft und installiert die benötigten Systempakete. Dazu gehören unter anderem sudo, polkitd, Nginx, PHP 8.4 FPM (einschließlich fileinfo, session, mbstring und zip), Python 3, Ghostscript, qpdf, Poppler, OCRmyPDF und Tesseract mit deutschen und englischen Sprachdaten. Zusätzlich baut er OpenSC 0.27.1 aus dem offiziellen Quellarchiv und installiert pyHanko 0.38.2 samt Python-Abhängigkeiten in einer anwendungseigenen Paketablage unter /opt/pipdfbox/python. Es wird keine virtuelle Python-Umgebung verwendet.
 
 ## Installation
 

@@ -4,12 +4,12 @@ Diese Anleitung ergänzt den Installer für Debian GNU/Linux 13 (Trixie). Der un
 
 ## Voraussetzungen
 
-- Raspberry Pi mit Debian 13 (Trixie)
+- Raspberry Pi mit Debian 13 (Trixie); andere Distributionen bzw. Debian-Versionen werden vom Installer abgewiesen
 - sudo-Rechte
 - Netzwerkzugriff auf GitHub und die Debian-Paketquellen
 - Netzwerkzugriff auf das öffentliche PiPDFBox-Repository auf GitHub
 
-Der Installer installiert bzw. prüft die benötigten Pakete, darunter Nginx, PHP 8.4 FPM, Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch. Für die PDF-Signierung baut er OpenSC 0.27.1 aus dem offiziellen, per SHA-256 geprüften Quellarchiv und installiert pyHanko 0.38.2 samt Abhängigkeiten mit pip in `/opt/pipdfbox/python`. Es wird keine virtuelle Python-Umgebung angelegt.
+Der Installer installiert bzw. prüft die benötigten Pakete, darunter sudo, polkitd, Nginx, PHP 8.4 FPM (mit fileinfo, session, mbstring und zip), Ghostscript, qpdf, Poppler, Python 3, pypdf, Pillow, OCRmyPDF und Tesseract-Sprachdaten für Deutsch und Englisch. Für die PDF-Signierung baut er OpenSC 0.27.1 aus dem offiziellen, per SHA-256 geprüften Quellarchiv und installiert pyHanko 0.38.2 samt Abhängigkeiten mit pip in `/opt/pipdfbox/python`. Es wird keine virtuelle Python-Umgebung angelegt.
 
 ## Neuinstallation
 
