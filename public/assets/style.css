@@ -912,3 +912,13 @@
 .tool-ocr .tool-content .option-check input[type="checkbox"] {
     margin-top: 0;
 }
+
+
+
+/* Formularfelder der vier Funktionskacheln exakt auf eine gemeinsame Höhe bringen. */
+.tool-number .tool-content p {
+    min-height: 4.2em;
+}
+.tool-ocr .tool-content .option-check {
+    margin-bottom: 6px !important;
+}
