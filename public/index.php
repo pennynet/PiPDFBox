@@ -463,6 +463,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $language = 'deu';
                             }
                             $args[] = '--language=' . $language;
+                            if (($_POST['ocr_textfile'] ?? '') === '1') {
+                                $args[] = '--textfile';
+                            }
                         }
                         if ($op !== 'sign') {
                             foreach ($paths as $p) {
@@ -920,6 +923,10 @@ $result = $_SESSION['result'] ?? null;
                         <option value="eng">Englisch</option>
                         <option value="deu+eng">Deutsch + Englisch</option>
                     </select>
+                    <label class="option-check">
+                        <input type="checkbox" name="ocr_textfile" value="1" checked>
+                        Textdatei erstellen
+                    </label>
                     <button class="task-button" type="submit" name="action" value="ocr">PDF Texterkennung starten</button>
                 </div>
             </section>

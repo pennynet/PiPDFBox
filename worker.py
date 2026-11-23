@@ -72,9 +72,10 @@ def main():
     output_type = output_type_args[0].split('=', 1)[1] if output_type_args else 'pdfa-2'
     language_args = [p for p in raw_inputs if p.startswith('--language=')]
     language = language_args[0].split('=', 1)[1] if language_args else 'deu'
+    textfile = '--textfile' in raw_inputs
     inputs = [
         p for p in raw_inputs
-        if p != '--reverse-second' and p != '--number-interleave' and p != '--parallel-gs' and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
+        if p not in ('--reverse-second', '--number-interleave', '--parallel-gs', '--textfile') and not p.startswith('--profile=') and not p.startswith('--prefix=') and not p.startswith('--output-type=') and not p.startswith('--language=')
     ]
     outdir = Path(outdir).resolve()
     for p in inputs:
@@ -202,6 +203,30 @@ def main():
             raise RuntimeError('Die Verarbeitung hat das Zeitlimit von 14 Minuten überschritten.')
         if not destination.is_file() or destination.stat().st_size == 0:
             raise RuntimeError('OCRmyPDF hat keine gültige Ausgabedatei erzeugt')
+
+        if op == 'ocr' and textfile:
+            pdftotext = shutil.which('pdftotext')
+            if not pdftotext:
+                raise RuntimeError('pdftotext ist nicht installiert. Bitte install.sh ausführen.')
+            text_destination = outdir / 'durchsuchbar.txt'
+            archive = outdir / 'durchsuchbar.zip'
+            try:
+                subprocess.run(
+                    [pdftotext, '-enc', 'UTF-8', '-layout',
+                     str(destination), str(text_destination)],
+                    check=True, capture_output=True, text=True, timeout=300
+                )
+            except subprocess.CalledProcessError as exc:
+                detail = (exc.stderr or exc.stdout or 'pdftotext meldet einen unbekannten Fehler').strip()
+                raise RuntimeError(detail[-1200:])
+            except subprocess.TimeoutExpired:
+                raise RuntimeError('Die Textextraktion hat das Zeitlimit von 5 Minuten überschritten.')
+            if not text_destination.is_file():
+                raise RuntimeError('pdftotext hat keine Textdatei erzeugt')
+            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+                z.write(destination, destination.name)
+                z.write(text_destination, text_destination.name)
+            name = archive.name
     elif op == 'compress':
         if len(inputs) != 1:
             raise ValueError('Genau eine PDF erforderlich')
