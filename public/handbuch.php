@@ -511,7 +511,7 @@ $addPdfPage = static function (string $title, array $lines, bool $cover = false)
         $label = '- ' . $physicalPage . ' -';
         $label = iconv('UTF-8', 'Windows-1252//TRANSLIT', $label) ?: $label;
         $label = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $label);
-        $commands[] = 'BT /F1 9 Tf 1 0 0 1 0 812 Tm (' . $label . ') Tj ET';
+        $commands[] = 'BT /F1 9 Tf 1 0 0 1 285 812 Tm (' . $label . ') Tj ET';
     }
 
     $title = iconv('UTF-8', 'Windows-1252//TRANSLIT', $title) ?: $title;
@@ -536,7 +536,16 @@ $addPdfPage = static function (string $title, array $lines, bool $cover = false)
 foreach ($pages as $pageIndex => $pageLines) {
     $title = (string)array_shift($pageLines);
     $cover = ($pageIndex === 0);
-    $chunks = array_chunk($pageLines, $cover ? 43 : 47);
+    // Erst umbrechen, dann nach tatsächlichen Druckzeilen aufteilen.
+    // So können lange Absätze die untere Seitenkante nicht unbemerkt überlaufen.
+    $wrappedLines = [];
+    foreach ($pageLines as $line) {
+        $line = iconv('UTF-8', 'Windows-1252//TRANSLIT', (string)$line) ?: (string)$line;
+        foreach (explode("\n", wordwrap($line, 88, "\n", true)) as $wrappedLine) {
+            $wrappedLines[] = $wrappedLine;
+        }
+    }
+    $chunks = array_chunk($wrappedLines, $cover ? 44 : 47);
     if ($chunks === []) {
         $chunks = [[]];
     }
