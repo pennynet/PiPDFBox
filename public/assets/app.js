@@ -971,30 +971,34 @@ async function loadZipDirectory(path = '') {
             row.appendChild(openEntry);
 
             const entryPath = zipJoinPath(zipCurrentPath, entry.name);
-            if (!entry.directory && entry.name.toLowerCase().endsWith('.pdf')) {
+            if (!entry.directory && /\\.(pdf|txt|p7s)$/i.test(entry.name)) {
                 const actions = document.createElement('div');
                 actions.className = 'zip-entry-actions';
                 const download = document.createElement('button');
                 download.type = 'button';
                 download.className = 'zip-entry-download';
                 download.textContent = '↓';
-                download.title = 'PDF herunterladen';
+                const fileType = entry.name.toLowerCase().split('.').pop();
+                download.title = fileType.toUpperCase() + ' herunterladen';
                 download.setAttribute('aria-label', entry.name + ' herunterladen');
                 download.addEventListener('click', () => downloadZipEntry(entryPath));
-                const label = document.createElement('label');
-                label.className = 'zip-entry-select';
-                label.title = 'PDF zur Weiterverarbeitung auswählen';
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = zipSelectedPdfs.has(entryPath);
-                checkbox.setAttribute('aria-label', entry.name + ' auswählen');
-                checkbox.addEventListener('change', () => {
-                    if (checkbox.checked) zipSelectedPdfs.add(entryPath);
-                    else zipSelectedPdfs.delete(entryPath);
-                    updateZipImportButton();
-                });
-                label.appendChild(checkbox);
-                actions.append(download, label);
+                actions.appendChild(download);
+                if (fileType === 'pdf') {
+                    const label = document.createElement('label');
+                    label.className = 'zip-entry-select';
+                    label.title = 'PDF zur Weiterverarbeitung auswählen';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = zipSelectedPdfs.has(entryPath);
+                    checkbox.setAttribute('aria-label', entry.name + ' auswählen');
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) zipSelectedPdfs.add(entryPath);
+                        else zipSelectedPdfs.delete(entryPath);
+                        updateZipImportButton();
+                    });
+                    label.appendChild(checkbox);
+                    actions.appendChild(label);
+                }
                 row.appendChild(actions);
             }
             zipList.appendChild(row);

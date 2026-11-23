@@ -619,7 +619,7 @@ $result = $_SESSION['result'] ?? null;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>PiPDFBox</title>
-    <link rel="stylesheet" href="/assets/style.css?v=43">
+    <link rel="stylesheet" href="/assets/style.css?v=44">
 </head>
 <body>
 
@@ -1003,7 +1003,7 @@ $result = $_SESSION['result'] ?? null;
 
 </main>
 
-<script src="/assets/app.js?v=47"></script>
+<script src="/assets/app.js?v=48"></script>
 <script>
 (() => {
     const pades = document.getElementById("sign_profile_pades");
