@@ -330,7 +330,9 @@ picker.addEventListener('change', () => acceptFiles(picker.files));
 
 const reverseInputsCheckbox = document.querySelector('input[name="reverse_inputs"]');
 reverseInputsCheckbox?.addEventListener('change', () => {
-    if (!reverseInputsCheckbox.checked || currentFiles().length <= 1) return;
+    if (currentFiles().length <= 1) return;
+    // The visible file order is authoritative for processing. Toggle the
+    // order in the file list itself; the worker must not reverse it again.
     setFiles(currentFiles().reverse());
 });
 drop.addEventListener('click', event => {
