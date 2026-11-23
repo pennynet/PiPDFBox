@@ -28,6 +28,8 @@ Die Signierung benötigt einen kompatiblen Kartenleser und eine D-TRUST-Signatur
 
 Der Installer prüft und installiert die benötigten Systempakete. Dazu gehören unter anderem sudo, polkitd, Nginx, PHP 8.4 FPM (einschließlich fileinfo, session, mbstring und zip), Python 3, Ghostscript, qpdf, Poppler, OCRmyPDF und Tesseract mit deutschen und englischen Sprachdaten. Zusätzlich baut er OpenSC 0.27.1 aus dem offiziellen Quellarchiv und installiert pyHanko 0.38.2 samt Python-Abhängigkeiten in einer anwendungseigenen Paketablage unter /opt/pipdfbox/python. Es wird keine virtuelle Python-Umgebung verwendet.
 
+PiPDFBox verwendet für den Smartcard-Zugriff fest `/opt/opensc-0.27.1/bin/pkcs11-tool` und `/opt/opensc-0.27.1/lib/opensc-pkcs11.so`. Der Installer hält Version, Quelladresse und SHA-256-Prüfsumme zusätzlich in `/opt/opensc-0.27.1/share/pipdfbox/opensc-build-info.txt` fest. Ein parallel von Debian bereitgestelltes OpenSC unter `/usr` wird nicht von PiPDFBox verwendet. Debian-Paketupdates (`apt upgrade`) bleiben ausdrücklich aktiviert und werden dadurch nicht blockiert; ein Wechsel auf eine Debian-Version von OpenSC erfolgt erst nach separater Prüfung und Anpassung von PiPDFBox.
+
 ## Installation
 
 Repository laden und Installer starten:
